@@ -1,0 +1,95 @@
+/* =====================================================================================
+   More motion: the Google button, hero effects, word ribbon, section backgrounds, footer.
+   Transform, opacity and background position only. The reduced motion rules at the end
+   (and the site setting) freeze it; "motion-on" means the visitor switched animation on.
+   ===================================================================================== */
+
+@keyframes lvx-flow { from { background-position: 0 0, 0% 0; } to { background-position: 0 0, 100% 0; } }
+@keyframes lvx-sheen { 0%, 62% { transform: translateX(-140%) skewX(-18deg); } 100% { transform: translateX(260%) skewX(-18deg); } }
+@keyframes lvx-word { from { opacity: 0.3; transform: translateY(0.5em) rotate(2.5deg); } to { opacity: 1; transform: none; } }
+@keyframes lvx-up { 0% { transform: translate3d(0, 0, 0) scale(0.6); opacity: 0; } 12% { opacity: 0.85; } 100% { transform: translate3d(var(--dx, 24px), -108vh, 0) scale(1.15); opacity: 0; } }
+@keyframes lvx-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+@keyframes lvx-ribbon { to { transform: translate3d(-50%, 0, 0); } }
+@keyframes lvx-ribbon-rev { from { transform: translate3d(-50%, 0, 0); } to { transform: translate3d(0, 0, 0); } }
+@keyframes lvx-orb { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(30px, -24px, 0) scale(1.1); } }
+@keyframes lvx-ping { 0% { box-shadow: 0 0 0 0 rgb(247 201 72 / 0.65); } 80%, 100% { box-shadow: 0 0 0 0.65rem rgb(247 201 72 / 0); } }
+@keyframes lvx-line { to { background-position: 300% 0, 0 0; } }
+@keyframes lvx-spark { 0%, 100% { transform: rotate(0) scale(1); } 50% { transform: rotate(14deg) scale(1.18); } }
+
+/* ---------- Continue with Google ---------- */
+.google-btn {
+  position: relative; isolation: isolate; overflow: hidden;
+  display: flex; width: 100%; min-height: 3.5rem; align-items: center; justify-content: center; gap: 0.85rem;
+  padding: 0 1.25rem; border-radius: 9999px; border: 2px solid transparent;
+  background:
+    linear-gradient(rgb(var(--surface)), rgb(var(--surface))) padding-box,
+    linear-gradient(90deg, #4285F4, #34A853, #FBBC05, #EA4335, #4285F4, #34A853) border-box;
+  background-size: 100% 100%, 220% 100%;
+  color: rgb(var(--heading)); font-size: 1.02rem; font-weight: 700; letter-spacing: 0.005em; text-decoration: none; cursor: pointer;
+  box-shadow: 0 1px 2px rgb(20 33 61 / 0.06), 0 8px 22px rgb(66 133 244 / 0.12);
+  animation: lvx-flow 5s ease-in-out infinite alternate;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s;
+}
+/* A soft light that passes across the button every few seconds */
+.google-btn::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(100deg, transparent 38%, rgb(66 133 244 / 0.16) 50%, transparent 62%); transform: translateX(-140%) skewX(-18deg); animation: lvx-sheen 5.5s ease-in-out 1.2s infinite; }
+.google-btn:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgb(66 133 244 / 0.26), 0 4px 12px rgb(234 67 53 / 0.14); }
+.google-btn:not(:disabled):active { transform: translateY(0) scale(0.985); }
+.google-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgb(37 99 235 / 0.5); }
+/* The G sits on a white disc, as Google's own guidelines show it, so it reads in light and dark themes */
+.google-btn .g-chip { display: grid; flex: none; place-items: center; height: 2.1rem; width: 2.1rem; border-radius: 9999px; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / 0.2), inset 0 0 0 1px rgb(0 0 0 / 0.05); transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.google-btn .g-logo { display: block; height: 1.2rem; width: 1.2rem; }
+.google-btn:not(:disabled):hover .g-chip { transform: rotate(-14deg) scale(1.12); }
+.google-btn .g-arrow { margin-left: -0.2rem; width: 0; opacity: 0; transform: translateX(-8px); transition: opacity 0.25s, transform 0.25s, width 0.25s; }
+.google-btn:not(:disabled):hover .g-arrow { width: 1rem; opacity: 1; transform: none; }
+.google-btn:disabled { cursor: not-allowed; opacity: 0.6; animation: none; }
+.google-btn:disabled::before { animation: none; }
+
+/* ---------- Hero ---------- */
+.word-rise { display: inline-block; animation: lvx-word 0.75s cubic-bezier(0.2, 0.8, 0.2, 1) calc(var(--start, 0s) + var(--i, 0) * var(--step, 0.06s)) both; }
+.hero-bubble-up { animation: lvx-up var(--dur, 12s) linear calc(var(--delay, 0s) * -1) infinite; will-change: transform, opacity; }
+.hero-bubble-up:nth-child(3n) { --dx: -30px; }
+.hero-bubble-up:nth-child(4n) { --dx: 50px; }
+.hero-rays {
+  background: repeating-conic-gradient(from 0deg, rgb(247 201 72 / 0.11) 0deg 5deg, transparent 5deg 20deg);
+  -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 48%); mask-image: radial-gradient(circle, #000 0%, transparent 48%);
+  animation: lvx-spin 140s linear infinite; will-change: transform;
+}
+.hero-spot { background: radial-gradient(440px circle at calc(50% + var(--mx, 0) * 32%) calc(50% + var(--my, 0) * 32%), rgb(247 201 72 / 0.16), transparent 65%); }
+@media (pointer: coarse) { .hero-spot { display: none; } }
+
+/* ---------- Word ribbon ---------- */
+.ribbon-track { animation: lvx-ribbon 46s linear infinite; will-change: transform; }
+.ribbon-track.ribbon-reverse { animation: lvx-ribbon-rev 54s linear infinite; }
+.ribbon-word { line-height: 1.1; }
+.ribbon-outline { color: transparent; -webkit-text-stroke: 1.5px rgb(var(--heading) / 0.5); }
+.ribbon-fill { background: linear-gradient(90deg, rgb(var(--accent)), #0F766E 55%, #D99A00); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
+.ribbon-star { display: inline-block; font-size: 1.4rem; animation: lvx-spark 3.6s ease-in-out infinite; }
+
+/* ---------- Section backgrounds ---------- */
+.section-blob { position: absolute; display: none; border-radius: 9999px; filter: blur(56px); }
+@media (min-width: 768px) { .section-blob { display: block; } }
+.section-blob-a { right: -5rem; top: -6rem; height: 18rem; width: 18rem; background: rgb(15 118 110 / 0.09); animation: lvx-orb 20s ease-in-out infinite; }
+.section-blob-b { bottom: -7rem; left: -5rem; height: 20rem; width: 20rem; background: rgb(37 99 235 / 0.08); animation: lvx-orb 26s ease-in-out infinite reverse; }
+html.dark .section-blob-a { background: rgb(45 212 191 / 0.07); }
+html.dark .section-blob-b { background: rgb(96 165 250 / 0.07); }
+
+/* ---------- Small touches everywhere ---------- */
+.eyebrow::before { content: ''; display: inline-block; height: 0.5rem; width: 0.5rem; margin-right: 0.6rem; vertical-align: middle; border-radius: 9999px; background: #F7C948; animation: lvx-ping 2.4s ease-out infinite; }
+footer > * { position: relative; }
+footer::before {
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(90deg, rgb(var(--accent)), #0F766E, #F7C948, rgb(var(--accent))) 0 0 / 300% 3px no-repeat, radial-gradient(circle at 88% -10%, rgb(37 99 235 / 0.3), transparent 42%);
+  animation: lvx-line 9s linear infinite;
+}
+.auth-card input:focus, .auth-card input:focus-visible { box-shadow: 0 0 0 3px rgb(37 99 235 / 0.3); }
+
+/* ---------- Reduced motion (unless the visitor switched animation on) ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html:not(.motion-on) .hero-bubble-up, html:not(.motion-on) .hero-rays { animation: none; }
+  html:not(.motion-on) .hero-bubble-up { opacity: 0; }
+  html:not(.motion-on) .hero-spot { display: none; }
+  html:not(.motion-on) .ribbon-track, html:not(.motion-on) .ribbon-reverse { animation: none; transform: none; }
+}
+html.reduce-motion .hero-bubble-up, html.reduce-motion .hero-rays, html.reduce-motion .ribbon-track, html.reduce-motion .ribbon-star, html.reduce-motion .section-blob, html.reduce-motion .google-btn, html.reduce-motion .google-btn::before, html.reduce-motion footer::before, html.reduce-motion .eyebrow::before { animation: none; }
+html.reduce-motion .hero-bubble-up { opacity: 0; }
+html.reduce-motion .hero-spot { display: none; }

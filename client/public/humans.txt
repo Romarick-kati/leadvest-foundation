@@ -1,0 +1,7 @@
+/* TEAM */
+Developer: Ndi Romarick Kati
+Role: Website design and development
+
+/* SITE */
+Name: Lead Vest Foundation
+Built with: React, TypeScript, Node.js, PostgreSQL

@@ -1,0 +1,35 @@
+Netlify > Site configuration > Environment variables
+(Type real values only in Netlify. Never put them in files or on GitHub.)
+
+DATABASE_URL         postgresql://...neon.tech/neondb?sslmode=require   (Neon > Connect, pooling OFF)
+SESSION_SECRET       32+ random characters     (make one: node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))")
+ENCRYPTION_KEY       a DIFFERENT 32+ random value (run the same command again)
+
+ADMIN_EMAIL          ndiromarickkati45@gmail.com
+ADMIN_NAME           your name
+ADMIN_PASSWORD       your chosen password   (delete after the first login)
+
+GOOGLE_CLIENT_ID     from Google Cloud Console
+GOOGLE_CLIENT_SECRET from Google Cloud Console
+
+Payments with Fapshi (see HOW_TO_RUN.md, section 7):
+PAYMENTS_MODE        both   (fapshi = mobile money only | flutterwave = cards only | both = offer the two)
+FAPSHI_API_USER      from your Fapshi service (Developers > your service)
+FAPSHI_API_KEY       sandbox key (FAK_TEST_...) first, live key when you launch
+FAPSHI_WEBHOOK_SECRET a secret you invent (24+ characters); type the same one in Fapshi's webhook settings
+FLUTTERWAVE_SECRET_KEY  from Flutterwave > Settings > API (test key first, live key at launch)
+FLUTTERWAVE_SECRET_HASH a secret you invent; type the same one in Flutterwave > Settings > Webhooks
+ACCESS_FEE_USD       price for card payers abroad, for example 5 (optional)
+ACCESS_FEE_XAF       the price in FCFA, for example 2500 (leave 0 or empty = free)
+ACCESS_PERIOD_DAYS   30 (monthly)  |  365 (yearly)  |  0 (one payment for good)
+
+Optional while testing:
+REQUIRE_ADMIN_2FA    false      (set back to true, or delete, before real users)
+SEED_SAMPLE_CONTENT  true       (adds sample programs, events and lessons; set false later)
+SETUP_TOKEN          24+ random characters (backup way to create an admin at /setup)
+
+EMAIL WITH RESEND (announcements, confirmations, resets)
+  1. Create an account at resend.com, add and verify your domain, then create an API key.
+  2. In Netlify set:  EMAIL_TRANSPORT=resend   RESEND_API_KEY=re_xxxxxxxx   EMAIL_FROM="Lead Vest Foundation <hello@your-domain>"
+  3. Redeploy. Dashboard > Announcements can now also send email (only to people who chose to receive news).
+  Without these, announcements still reach each person's notification bar.

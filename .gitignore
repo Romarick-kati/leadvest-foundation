@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+server/uploads/
+server/tmp-test-uploads/
+coverage/
+*.log
+.DS_Store
+client/test-results/
+client/playwright-report/
+netlify-drop-preview/

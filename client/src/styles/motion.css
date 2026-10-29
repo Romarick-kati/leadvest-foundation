@@ -1,0 +1,115 @@
+/* =====================================================================================
+   Extra motion for the whole site. Everything here is decoration: transform, opacity and
+   background position only. The reduced motion rules at the bottom (and the site setting
+   html.reduce-motion) freeze all of it.
+   ===================================================================================== */
+
+@keyframes lvm-text-shimmer { to { background-position: -250% 0; } }
+@keyframes lvm-sparkle { 0%, 100% { transform: scale(0) rotate(0deg); opacity: 0; } 50% { transform: scale(1) rotate(90deg); opacity: 1; } }
+@keyframes lvm-wave { to { transform: translate3d(-50%, 0, 0); } }
+@keyframes lvm-ring { 0% { transform: scale(0.55); opacity: 0.55; } 100% { transform: scale(1.7); opacity: 0; } }
+@keyframes lvm-blob { 0%, 100% { border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%; } 50% { border-radius: 58% 42% 38% 62% / 55% 60% 40% 45%; } }
+@keyframes lvm-bar { from { width: 0; } to { width: 3.5rem; } }
+@keyframes lvm-pop { 0% { opacity: 0; transform: scale(0.6) translateY(12px); } 70% { transform: scale(1.06); } 100% { opacity: 1; transform: none; } }
+@keyframes lvm-header { from { transform: translateY(-100%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes lvm-sheen { 0% { transform: translateX(-130%) skewX(-18deg); } 55%, 100% { transform: translateX(230%) skewX(-18deg); } }
+@keyframes lvm-pulse-glow { 0%, 100% { box-shadow: 0 0 0 0 rgb(247 201 72 / 0.55), 0 8px 20px rgb(0 0 0 / 0.14); } 50% { box-shadow: 0 0 0 12px rgb(247 201 72 / 0), 0 8px 20px rgb(0 0 0 / 0.14); } }
+@keyframes lvm-gradient { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+@keyframes lvm-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes lvm-grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes lvm-dash { to { stroke-dashoffset: -60; } }
+
+/* ---------- Hero ---------- */
+.text-shimmer {
+  color: #F7C948;
+  background: linear-gradient(100deg, #F7C948 0%, #FFF3C4 22%, #F7C948 44%, #FFD966 70%, #F7C948 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: lvm-text-shimmer 6s linear infinite;
+}
+.hero-layer {
+  transform: translate3d(calc(var(--mx, 0) * var(--depth, 10) * 1px), calc(var(--my, 0) * var(--depth, 10) * 1px), 0);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sparkle { animation: lvm-sparkle var(--dur, 4s) ease-in-out var(--delay, 0s) infinite; }
+.hero-ring { animation: lvm-ring 4.5s ease-out infinite; }
+.hero-blob { animation: lvm-blob 14s ease-in-out infinite, lvm-bob 9s ease-in-out infinite; }
+.hero-wave-a { animation: lvm-wave 22s linear infinite; }
+.hero-wave-b { animation: lvm-wave 34s linear infinite reverse; }
+.hero-bubble { animation: lvm-pop 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) var(--delay, 0.3s) both; }
+.hero-bubble > span { display: flex; animation: lvm-bob var(--bob, 6s) ease-in-out var(--delay, 0s) infinite; }
+.btn-pulse { animation: lvm-pulse-glow 2.8s ease-in-out 1.4s infinite; }
+.btn-arrow svg:last-child { transition: transform 0.25s ease; }
+.btn-arrow:hover svg:last-child { transform: translateX(4px); }
+.hero-badge-ring text { fill: rgb(255 255 255 / 0.85); }
+.hero-progress > span { display: block; height: 100%; border-radius: inherit; transform-origin: left; animation: lvm-grow-x 2.2s cubic-bezier(0.22, 1, 0.36, 1) 0.9s both; }
+
+/* ---------- Headings, cards, links ---------- */
+.heading-bar { display: block; height: 4px; width: 3.5rem; margin-top: 0.9rem; border-radius: 4px; background: linear-gradient(90deg, rgb(var(--accent)), #0F766E 60%, #F7C948); background-size: 200% 100%; animation: lvm-bar 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both, lvm-gradient 6s ease-in-out infinite; }
+[data-reveal='hidden'] .heading-bar { animation: none; width: 0; }
+.text-center .heading-bar, .justify-center .heading-bar { margin-left: auto; margin-right: auto; }
+
+/* Photos zoom softly inside their frame when a card is hovered */
+main a.group img, main article img { transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
+@media (hover: hover) { main a.group:hover img, main article:hover img { transform: scale(1.06); } }
+@media (hover: hover) { main article:hover, main a.group:hover { box-shadow: 0 2px 4px rgb(20 33 61 / 0.05), 0 22px 44px rgb(37 99 235 / 0.16); } }
+
+/* Round icon chips wobble a little when the card they sit in is hovered */
+@keyframes lvm-wobble { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-10deg) scale(1.08); } 60% { transform: rotate(8deg) scale(1.08); } }
+@media (hover: hover) {
+  main a.group:hover > div > .rounded-full > svg, main article:hover .rounded-full > svg, main .group:hover .rounded-xl.bg-mint-50 > svg { animation: lvm-wobble 0.7s ease-in-out; }
+}
+
+/* Sticky header slides in once */
+header.sticky { animation: lvm-header 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+header.sticky nav a, header.sticky nav button { transition: color 0.2s, background-color 0.2s, transform 0.2s; }
+@media (hover: hover) { header.sticky nav a:hover { transform: translateY(-1px); } }
+
+/* Footer links and social icons */
+footer a { transition: color 0.2s, transform 0.2s; }
+footer a svg { transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@media (hover: hover) { footer a:hover svg { transform: translateY(-3px) scale(1.15) rotate(-4deg); } footer a:hover { transform: translateX(2px); } }
+
+/* Form fields glow softly when focused */
+input:not([type='checkbox']):not([type='radio']), textarea, select { transition: box-shadow 0.25s, border-color 0.25s, background-color 0.25s; }
+
+/* Pop-in for badges and chips */
+.pop-in { animation: lvm-pop 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+/* Scroll progress bar and back to top */
+.scroll-progress { position: fixed; inset: 0 0 auto 0; z-index: 70; height: 3px; transform-origin: left; transform: scaleX(0); background: linear-gradient(90deg, rgb(var(--accent)), #0F766E, #F7C948); pointer-events: none; }
+.back-top { position: fixed; left: max(1rem, env(safe-area-inset-left)); bottom: max(1rem, env(safe-area-inset-bottom)); z-index: 50; display: flex; height: 3rem; width: 3rem; align-items: center; justify-content: center; border-radius: 9999px; border: 1px solid rgb(var(--line-strong)); background: rgb(var(--surface)); color: rgb(var(--heading)); box-shadow: 0 6px 18px rgb(20 33 61 / 0.18); opacity: 0; transform: translateY(16px) scale(0.8); pointer-events: none; transition: opacity 0.3s, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.2s, color 0.2s; }
+.back-top[data-show='true'] { opacity: 1; transform: none; pointer-events: auto; }
+.back-top:hover { background: rgb(var(--accent)); color: #fff; transform: translateY(-3px); }
+.back-top:focus-visible { outline: none; box-shadow: 0 0 0 3px rgb(37 99 235 / 0.4); }
+
+/* ---------- Sign in and sign up ---------- */
+.auth-card {
+  border: 1.5px solid transparent;
+  background: linear-gradient(rgb(var(--surface)), rgb(var(--surface))) padding-box, linear-gradient(120deg, rgb(var(--accent)), #0F766E, #F7C948, rgb(var(--accent))) border-box;
+  background-size: 100% 100%, 300% 300%;
+  animation: lvm-pop 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both, lvm-gradient 8s ease-in-out 0.7s infinite;
+}
+.auth-stagger > * { animation: lvm-pop 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.auth-stagger > *:nth-child(1) { animation-delay: 0.12s; }
+.auth-stagger > *:nth-child(2) { animation-delay: 0.2s; }
+.auth-stagger > *:nth-child(3) { animation-delay: 0.28s; }
+.auth-stagger > *:nth-child(4) { animation-delay: 0.36s; }
+.auth-stagger > *:nth-child(5) { animation-delay: 0.44s; }
+.auth-stagger > *:nth-child(n + 6) { animation-delay: 0.5s; }
+
+.auth-note { display: flex; align-items: flex-start; gap: 0.5rem; margin-top: 0.85rem; padding: 0.55rem 0.8rem; border-radius: 0.75rem; background: rgb(var(--blue-50)); color: rgb(var(--ink-muted)); font-size: 0.8125rem; line-height: 1.25rem; }
+.or-divider span:not(.or-text) { transform-origin: center; animation: lvm-grow-x 0.8s ease 0.4s both; }
+
+/* ---------- Reduced motion: everything above is switched off ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html:not(.motion-on) .text-shimmer { animation: none; -webkit-text-fill-color: currentColor; background: none; }
+  html:not(.motion-on) .hero-layer { transform: none !important; }
+  html:not(.motion-on) .sparkle, html:not(.motion-on) .hero-ring, html:not(.motion-on) .hero-wave-a, html:not(.motion-on) .hero-wave-b { animation: none; }
+  html:not(.motion-on) .scroll-progress { display: none; }
+}
+html.reduce-motion .text-shimmer { animation: none; -webkit-text-fill-color: currentColor; background: none; }
+html.reduce-motion .hero-layer { transform: none !important; }
+html.reduce-motion .sparkle, html.reduce-motion .hero-ring, html.reduce-motion .hero-wave-a, html.reduce-motion .hero-wave-b { animation: none; }
+html.reduce-motion .scroll-progress { display: none; }

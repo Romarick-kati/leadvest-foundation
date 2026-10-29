@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /admin
+Disallow: /settings
+Disallow: /account
+Disallow: /instructor
+Disallow: /setup
+Allow: /

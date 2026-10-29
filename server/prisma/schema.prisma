@@ -1,0 +1,618 @@
+// Lead Vest Foundation data model.
+// All personal data about children is private by default. Public API endpoints
+// never select learner records, guardian links, registrations or progress.
+
+generator client {
+  provider = "prisma-client-js"
+  // native for local machines, rhel-openssl-3.0.x for Netlify Functions (Amazon Linux 2023).
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PARENT
+  LEARNER
+  // A young person (16 or older) who registered themselves. Manages their own account.
+  YOUTH
+  // Just signed up (email or Google) and has not yet chosen how they will use the platform.
+  MEMBER
+  INSTRUCTOR
+  ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum PublishStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model User {
+  id              String        @id @default(cuid())
+  // Adults sign in with email. Child learners sign in with a username created by a guardian.
+  email           String?       @unique
+  username        String?       @unique
+  passwordHash    String
+  displayName     String
+  avatarUrl       String?
+  role            Role
+  status          AccountStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?
+  passwordChangedAt DateTime    @default(now())
+
+  // TOTP: secret is AES-256-GCM encrypted at rest. Pending secret is stored while enrolling.
+  totpSecretEnc        String?
+  totpPendingSecretEnc String?
+  totpEnabledAt        DateTime?
+  totpLastTimeStep     Int?
+
+  // Google sign in: the stable subject identifier from Google's verified ID token.
+  googleSub      String?   @unique
+  googleLinkedAt DateTime?
+
+  // Paid access. Staff are never charged. A child learner takes the access of their guardian.
+  accessUntil    DateTime?
+  accessLifetime Boolean   @default(false)
+
+  failedLoginCount Int       @default(0)
+  lockedUntil      DateTime?
+  lastLoginAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // For learners: the guardian who created the account.
+  createdById String?
+  createdBy   User?   @relation("CreatedLearners", fields: [createdById], references: [id], onDelete: SetNull)
+  createdLearners User[] @relation("CreatedLearners")
+
+  sessions          Session[]
+  notifications     Notification[]
+  authTokens        AuthToken[]
+  recoveryCodes     RecoveryCode[]
+  preferences       UserPreferences?
+  learnerProfile    LearnerProfile?
+  guardianOf        GuardianLink[]           @relation("Guardian")
+  guardedBy         GuardianLink[]           @relation("Learner")
+  assignments       InstructorAssignment[]
+  registrationsMade Registration[]           @relation("Registrant")
+  registrationsAsLearner Registration[]      @relation("RegisteredLearner")
+  paymentsMade      Payment[]                @relation("Payer")
+  lessonProgress    LessonProgress[]
+  consentsGiven     ConsentRecord[]          @relation("ConsentGiver")
+  consentsAbout     ConsentRecord[]          @relation("ConsentSubject")
+  auditLogs         AuditLog[]
+  dataRequests      DataRequest[]
+  mediaUploads      MediaAsset[]
+  securityEvents    SecurityEvent[]
+  articles          Article[]
+
+  @@index([role])
+  @@index([status])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  // SHA-256 of the random cookie token. The raw token is never stored.
+  tokenHash    String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // false until the second factor is completed for users with 2FA enabled.
+  mfaVerified  Boolean  @default(false)
+  // Last time the user proved their password or second factor (for sensitive actions).
+  reauthAt     DateTime?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+  expiresAt    DateTime
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+enum AuthTokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+model AuthToken {
+  id        String        @id @default(cuid())
+  tokenHash String        @unique
+  type      AuthTokenType
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime      @default(now())
+
+  @@index([userId, type])
+}
+
+model RecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model SecurityEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model UserPreferences {
+  userId              String   @id
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Accessibility
+  reduceMotion        Boolean  @default(false)
+  textSize            String   @default("standard") // standard | large | larger
+  underlineLinks      Boolean  @default(false)
+  accent              String   @default("blue") // blue | teal | violet | rose | orange | green
+  // Optional communications (essential account and security messages are always sent)
+  newsletterOptIn     Boolean  @default(false)
+  eventAnnouncements  Boolean  @default(false)
+  programUpdates      Boolean  @default(false)
+  // Security notifications
+  securityAlerts      Boolean  @default(true)
+  // Privacy
+  showProfilePhoto    Boolean  @default(false)
+  // Appearance and language
+  theme               String   @default("light") // light | dark | system
+  language            String   @default("en")     // en | fr | es | pt
+  updatedAt           DateTime @updatedAt
+}
+
+model LearnerProfile {
+  userId        String   @id
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Minimal information only. No birth date, school or address is collected.
+  ageBand       String?  // e.g. "6-8", confirmed by guardian
+  learningLevel String   @default("starter") // starter | explorer | leader
+  readAloud     Boolean  @default(false)
+  largerText    Boolean  @default(false)
+  updatedAt     DateTime @updatedAt
+}
+
+enum GuardianLinkStatus {
+  PENDING
+  VERIFIED
+  REVOKED
+}
+
+model GuardianLink {
+  id           String             @id @default(cuid())
+  guardianId   String
+  guardian     User               @relation("Guardian", fields: [guardianId], references: [id], onDelete: Cascade)
+  learnerId    String
+  learner      User               @relation("Learner", fields: [learnerId], references: [id], onDelete: Cascade)
+  relationship String             // parent | guardian | other
+  status       GuardianLinkStatus @default(PENDING)
+  verifiedById String?
+  verifiedAt   DateTime?
+  createdAt    DateTime           @default(now())
+
+  @@unique([guardianId, learnerId])
+  @@index([learnerId])
+}
+
+model ConsentRecord {
+  id         String   @id @default(cuid())
+  giverId    String
+  giver      User     @relation("ConsentGiver", fields: [giverId], references: [id], onDelete: Cascade)
+  subjectId  String?
+  subject    User?    @relation("ConsentSubject", fields: [subjectId], references: [id], onDelete: Cascade)
+  // e.g. learning_account, photography, program_participation
+  type       String
+  policyVersion String
+  granted    Boolean
+  createdAt  DateTime @default(now())
+
+  @@index([subjectId, type])
+  @@index([giverId])
+}
+
+model Program {
+  id               String        @id @default(cuid())
+  slug             String        @unique
+  title            String
+  summary          String
+  description      String
+  imageKey         String?
+  imageAlt         String?
+  ageGroup         String?       // only when confirmed by the foundation
+  objectives       String[]
+  deliveryFormat   String?       // in person | online | blended
+  availability     String?       // e.g. "Enquiries open"
+  schedule         String?
+  duration         String?
+  requirements     String?
+  feeInfo          String?
+  priceCents       Int?
+  currency         String?
+  registrationInfo String?
+  registrationOpen Boolean       @default(false)
+  faq              Json          @default("[]")
+  status           PublishStatus @default(DRAFT)
+  isSample         Boolean       @default(false)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  assignments   InstructorAssignment[]
+  registrations Registration[]
+  modules       LearningModule[]
+
+  @@index([status])
+}
+
+model InstructorAssignment {
+  id           String   @id @default(cuid())
+  programId    String
+  program      Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  instructorId String
+  instructor   User     @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@unique([programId, instructorId])
+  @@index([instructorId])
+}
+
+model LearningModule {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  title       String
+  description String
+  // Visual theme for the child facing card: sky | sun | mint
+  theme       String        @default("sky")
+  icon        String        @default("book")
+  ageGroup    String?
+  // Public modules can be used without an account. Program modules require enrolment.
+  isPublic    Boolean       @default(true)
+  programId   String?
+  program     Program?      @relation(fields: [programId], references: [id], onDelete: SetNull)
+  status      PublishStatus @default(DRAFT)
+  sortOrder   Int           @default(0)
+  isSample    Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  lessons     Lesson[]
+
+  @@index([status, sortOrder])
+}
+
+model Lesson {
+  id        String         @id @default(cuid())
+  moduleId  String
+  module    LearningModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  slug      String
+  title     String
+  // Simple content blocks: [{ type: "text" | "tip" | "question", ... }]
+  content   Json           @default("[]")
+  // Quiz: [{ prompt, options: string[], answerIndex, explanation? }]
+  quiz      Json           @default("[]")
+  minutes   Int            @default(5)
+  sortOrder Int            @default(0)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  progress  LessonProgress[]
+
+  @@unique([moduleId, slug])
+}
+
+model LessonProgress {
+  id          String   @id @default(cuid())
+  learnerId   String
+  learner     User     @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  lessonId    String
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  score       Int?
+  total       Int?
+  completedAt DateTime @default(now())
+
+  @@unique([learnerId, lessonId])
+}
+
+enum EventStatus {
+  SCHEDULED
+  POSTPONED
+  CANCELLED
+  COMPLETED
+}
+
+enum LocationType {
+  IN_PERSON
+  ONLINE
+  HYBRID
+}
+
+model Event {
+  id                   String        @id @default(cuid())
+  slug                 String        @unique
+  title                String
+  summary              String
+  description          String
+  startsAt             DateTime
+  endsAt               DateTime?
+  timezone             String        @default("Africa/Douala")
+  locationType         LocationType  @default(IN_PERSON)
+  location             String?
+  audience             String?
+  capacity             Int?
+  registrationOpen     Boolean       @default(false)
+  registrationDeadline DateTime?
+  registrationInfo     String?
+  // Future: link to an external provider such as a ticketing platform.
+  externalUrl          String?
+  priceCents           Int?
+  currency             String?
+  imageKey             String?
+  imageAlt             String?
+  eventStatus          EventStatus   @default(SCHEDULED)
+  status               PublishStatus @default(DRAFT)
+  isSample             Boolean       @default(false)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  registrations        Registration[]
+
+  @@index([status, startsAt])
+}
+
+enum RegistrationStatus {
+  PENDING
+  CONFIRMED
+  WAITLISTED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  NOT_REQUIRED
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+model Registration {
+  id            String             @id @default(cuid())
+  eventId       String?
+  event         Event?             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  programId     String?
+  program       Program?           @relation(fields: [programId], references: [id], onDelete: Cascade)
+  registrantId  String
+  registrant    User               @relation("Registrant", fields: [registrantId], references: [id], onDelete: Cascade)
+  // When a guardian registers a child, the learner account is referenced here.
+  learnerId     String?
+  learner       User?              @relation("RegisteredLearner", fields: [learnerId], references: [id], onDelete: Cascade)
+  status        RegistrationStatus @default(PENDING)
+  paymentStatus PaymentStatus      @default(NOT_REQUIRED)
+  notes         String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  payments      Payment[]
+
+  @@index([eventId])
+  @@index([programId])
+  @@index([registrantId])
+}
+
+enum PaymentPurpose {
+  REGISTRATION
+  DONATION
+  // The access fee a young person or parent pays to keep using the platform.
+  ACCESS
+}
+
+model Payment {
+  id              String         @id @default(cuid())
+  purpose         PaymentPurpose
+  registrationId  String?
+  registration    Registration?  @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+  // Who paid, for access fee payments.
+  userId          String?
+  payer           User?          @relation("Payer", fields: [userId], references: [id], onDelete: SetNull)
+  // Where the person goes to pay. Kept so a retry returns the same link.
+  checkoutUrl     String?
+  provider        String         // "mock" or "fapshi"
+  providerRef     String?        @unique
+  idempotencyKey  String         @unique
+  amountCents     Int
+  currency        String
+  status          PaymentStatus  @default(PENDING)
+  // Never store card numbers or security codes. Only provider references.
+  payerEmail      String?
+  isSimulation    Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([status])
+  @@index([userId])
+}
+
+model PaymentWebhookEvent {
+  id         String   @id @default(cuid())
+  provider   String
+  eventId    String
+  type       String
+  receivedAt DateTime @default(now())
+
+  @@unique([provider, eventId])
+}
+
+enum EnquiryStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+  ARCHIVED
+}
+
+model Enquiry {
+  id        String        @id @default(cuid())
+  // contact | volunteer | mentor | partner | program | event | donation | other
+  category  String
+  name      String
+  email     String
+  phone     String?
+  subject   String?
+  message   String
+  organization String?
+  status    EnquiryStatus @default(NEW)
+  internalNotes String?
+  handledById String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([status, createdAt])
+  @@index([category])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action     String
+  targetType String?
+  targetId   String?
+  // Never contains passwords, codes, secrets or unnecessary personal data.
+  metadata   Json     @default("{}")
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorId])
+  @@index([action])
+}
+
+model SiteSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+// Learning resources and articles for parents, mentors and young people.
+model Article {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  title       String
+  summary     String
+  body        String        // Markdown, rendered without HTML
+  category    String        // parenting | learning | leadership | digital | news
+  imageKey    String?
+  imageAlt    String?
+  readMinutes Int?
+  status      PublishStatus @default(DRAFT)
+  isSample    Boolean       @default(false)
+  publishedAt DateTime?
+  authorId    String?
+  author      User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([status, publishedAt])
+  @@index([category])
+}
+
+model Page {
+  id        String        @id @default(cuid())
+  slug      String        @unique
+  title     String
+  body      String
+  status    PublishStatus @default(DRAFT)
+  needsReview Boolean     @default(true)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+enum MediaVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+model MediaAsset {
+  id           String          @id @default(cuid())
+  filename     String          @unique
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  altText      String          @default("")
+  folder       String          @default("general")
+  visibility   MediaVisibility @default(PUBLIC)
+  uploadedById String?
+  uploadedBy   User?           @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime        @default(now())
+}
+
+enum DataRequestType {
+  EXPORT
+  CORRECTION
+  DELETION
+}
+
+enum DataRequestStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  DECLINED
+}
+
+model DataRequest {
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      DataRequestType
+  details   String?
+  status    DataRequestStatus @default(OPEN)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
+
+/// A message shown in a person's notification bar.
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String    @default("general") // general | program | event | article | admin
+  title     String
+  body      String?
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt, createdAt])
+}
+
+/// A record of each announcement an administrator sent (in the notification bar and, optionally, by email).
+model Broadcast {
+  id          String   @id @default(cuid())
+  title       String
+  body        String
+  link        String?
+  audience    String
+  sendEmail   Boolean  @default(false)
+  recipients  Int      @default(0)
+  emailed     Int      @default(0)
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+}

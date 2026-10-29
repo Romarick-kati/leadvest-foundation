@@ -1,0 +1,14 @@
+{
+  "name": "Lead Vest Foundation",
+  "short_name": "Lead Vest",
+  "description": "Learn. Grow. Lead. A safe place for children and young people.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#1E3A8A",
+  "icons": [
+    { "src": "/images/branding/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/images/branding/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

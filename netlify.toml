@@ -1,0 +1,69 @@
+# Lead Vest Foundation on Netlify. The website, and the API as a Netlify Function.
+# Step by step setup: NETLIFY.md. The build mode is chosen by scripts/netlify-build.mjs.
+[build]
+  command = "node scripts/netlify-build.mjs"
+  publish = "client/dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  directory = "netlify/functions"
+  # Prisma's query engine and the site address written at build time are loaded from disk,
+  # so they are included explicitly. The ! lines drop files the function never uses (other
+  # platforms' engines, other databases, the TypeScript compiler) to stay far below the
+  # 50 MB function size limit (about 11 to 22 MB, depending on which Linux engines Prisma adds).
+  included_files = [
+    "server/dist/netlify-site.json",
+    "server/dist/seo-template.html",
+    "node_modules/.prisma/client/libquery_engine-rhel-openssl-3.0.x.so.node",
+    "node_modules/.prisma/client/schema.prisma",
+    "!node_modules/.prisma/client/libquery_engine-debian-*",
+    "!node_modules/.prisma/client/libquery_engine-darwin*",
+    "!node_modules/.prisma/client/query_engine-windows*",
+    "!node_modules/.prisma/client/query_engine_bg.*",
+    "!node_modules/@prisma/client/runtime/*.wasm*",
+    "!node_modules/@prisma/client/runtime/*edge*",
+    "!node_modules/@prisma/client/runtime/*react-native*",
+    "!node_modules/@prisma/client/runtime/*.map",
+    "!node_modules/@prisma/client/runtime/binary*",
+    "!node_modules/@prisma/client/runtime/wasm*",
+    "!node_modules/@typescript/**",
+    "!node_modules/typescript/**",
+    "!node_modules/@node-rs/argon2-linux-x64-musl/**",
+  ]
+  external_node_modules = ["@prisma/client", ".prisma", "@node-rs/argon2"]
+
+[functions.cleanup]
+  schedule = "@hourly"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), interest-cohort=(), browsing-topics=()"
+    Cross-Origin-Opener-Policy = "same-origin"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache"
