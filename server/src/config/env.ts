@@ -42,8 +42,9 @@ const schema = z.object({
   SMTP_SECURE: bool(false),
 
   // Payments are off until the foundation approves a provider and configuration.
-  // fapshi = mobile money in Cameroon. flutterwave = cards from anywhere in the world (and mobile money). both = offer the two.
-  PAYMENTS_MODE: z.enum(['disabled', 'mock', 'fapshi', 'flutterwave', 'both']).default('disabled'),
+  // fapshi = MTN mobile money in Cameroon. flutterwave / notchpay = cards (and more). both = fapshi + flutterwave.
+  // fapshi+notchpay = MTN MoMo and Notch Pay cards. all = all three.
+  PAYMENTS_MODE: z.enum(['disabled', 'mock', 'fapshi', 'flutterwave', 'notchpay', 'both', 'fapshi+notchpay', 'all']).default('disabled'),
   PAYMENT_WEBHOOK_SECRET: z.string().optional(),
   // Fapshi (mobile money, Cameroon). Sandbox keys start with FAK_TEST_ and use the test server.
   FAPSHI_API_USER: z.string().optional(),
@@ -54,6 +55,10 @@ const schema = z.object({
   FLUTTERWAVE_SECRET_KEY: z.string().optional(),
   // The "secret hash" typed into Flutterwave's webhook settings. Flutterwave sends it in the verif-hash header.
   FLUTTERWAVE_SECRET_HASH: z.string().optional(),
+  // Notch Pay (cards and mobile money, built for Cameroon). Sandbox keys start with pk_test.
+  NOTCHPAY_PUBLIC_KEY: z.string().optional(),
+  // The webhook "hash key" (hsk_...). Notch Pay signs every webhook with it.
+  NOTCHPAY_HASH_KEY: z.string().optional(),
   // Price for people paying by card from abroad, in US dollars (for example 5 or 4.99). 0 or empty = charge the FCFA price.
   ACCESS_FEE_USD: z.coerce.number().min(0).max(10000).default(0),
   // The access fee in XAF (FCFA). 0 means the platform is free. Minimum is 100 (Fapshi's minimum).
@@ -78,7 +83,7 @@ const schema = z.object({
 
 // Netlify DB (Neon) provides NETLIFY_DATABASE_URL; use it when DATABASE_URL is not set.
 if (!process.env.DATABASE_URL && process.env.NETLIFY_DATABASE_URL) process.env.DATABASE_URL = process.env.NETLIFY_DATABASE_URL;
-for (const key of ['RESEND_API_KEY', 'FLUTTERWAVE_SECRET_KEY', 'FLUTTERWAVE_SECRET_HASH', 'ACCESS_FEE_USD', 'FAPSHI_API_USER', 'FAPSHI_API_KEY', 'FAPSHI_WEBHOOK_SECRET', 'ACCESS_FEE_XAF', 'ACCESS_PERIOD_DAYS', 'SETUP_TOKEN', 'CLIENT_IP_HEADER', 'PUBLIC_APP_URL', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI'] as const) if (process.env[key] === '') delete process.env[key];
+for (const key of ['RESEND_API_KEY', 'FLUTTERWAVE_SECRET_KEY', 'FLUTTERWAVE_SECRET_HASH', 'NOTCHPAY_PUBLIC_KEY', 'NOTCHPAY_HASH_KEY', 'ACCESS_FEE_USD', 'FAPSHI_API_USER', 'FAPSHI_API_KEY', 'FAPSHI_WEBHOOK_SECRET', 'ACCESS_FEE_XAF', 'ACCESS_PERIOD_DAYS', 'SETUP_TOKEN', 'CLIENT_IP_HEADER', 'PUBLIC_APP_URL', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI'] as const) if (process.env[key] === '') delete process.env[key];
 
 const parsed = schema.safeParse(process.env);
 if (!parsed.success) {
@@ -94,12 +99,16 @@ if (raw.ACCESS_FEE_XAF > 0 && raw.ACCESS_FEE_XAF < 100) {
   console.error('ACCESS_FEE_XAF must be 0 (free) or at least 100, which is the smallest amount Fapshi accepts.');
   process.exit(1);
 }
-if ((raw.PAYMENTS_MODE === 'fapshi' || raw.PAYMENTS_MODE === 'both') && (!raw.FAPSHI_API_USER || !raw.FAPSHI_API_KEY)) {
+if ((raw.PAYMENTS_MODE === 'fapshi' || raw.PAYMENTS_MODE === 'both' || raw.PAYMENTS_MODE === 'fapshi+notchpay' || raw.PAYMENTS_MODE === 'all') && (!raw.FAPSHI_API_USER || !raw.FAPSHI_API_KEY)) {
   console.error('PAYMENTS_MODE=fapshi (or both) needs FAPSHI_API_USER and FAPSHI_API_KEY.');
   process.exit(1);
 }
-if ((raw.PAYMENTS_MODE === 'flutterwave' || raw.PAYMENTS_MODE === 'both') && !raw.FLUTTERWAVE_SECRET_KEY) {
+if ((raw.PAYMENTS_MODE === 'flutterwave' || raw.PAYMENTS_MODE === 'both' || raw.PAYMENTS_MODE === 'all') && !raw.FLUTTERWAVE_SECRET_KEY) {
   console.error('PAYMENTS_MODE=flutterwave (or both) needs FLUTTERWAVE_SECRET_KEY.');
+  process.exit(1);
+}
+if ((raw.PAYMENTS_MODE === 'notchpay' || raw.PAYMENTS_MODE === 'fapshi+notchpay' || raw.PAYMENTS_MODE === 'all') && !raw.NOTCHPAY_PUBLIC_KEY) {
+  console.error('PAYMENTS_MODE with notchpay needs NOTCHPAY_PUBLIC_KEY (and NOTCHPAY_HASH_KEY for webhooks).');
   process.exit(1);
 }
 
@@ -123,6 +132,6 @@ export const env = {
   /** Which payment providers are switched on, in the order they are offered. */
   get paymentProviders(): string[] {
     const m = this.PAYMENTS_MODE;
-    return m === 'both' ? ['fapshi', 'flutterwave'] : m === 'disabled' ? [] : [m];
+    return m === 'both' ? ['fapshi', 'flutterwave'] : m === 'fapshi+notchpay' ? ['fapshi', 'notchpay'] : m === 'all' ? ['fapshi', 'notchpay', 'flutterwave'] : m === 'disabled' ? [] : [m];
   },
 };

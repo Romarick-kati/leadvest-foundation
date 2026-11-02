@@ -14,7 +14,7 @@ const listQuery = z.object({ q: z.string().trim().max(100).optional(), status: s
 
 const faqSchema = z.array(z.object({ question: z.string().trim().min(1).max(200), answer: z.string().trim().min(1).max(2000) })).max(30);
 const money = z.number().int().min(0).max(100_000_000).nullable().optional();
-const currency = z.string().trim().toUpperCase().length(3).nullable().optional();
+const currency = z.preprocess((v) => (typeof v === 'string' ? v.trim().toUpperCase() || null : v), z.enum(['XAF', 'USD', 'EUR'], { error: 'Choose FCFA, US dollars or euros.' }).nullable().optional());
 
 /**
  * Makes a web address from a title when none is given, and adds -2, -3 and so on if it is taken,

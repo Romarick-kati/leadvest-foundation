@@ -180,6 +180,8 @@ model UserPreferences {
   // Appearance and language
   theme               String   @default("light") // light | dark | system
   language            String   @default("en")     // en | fr | es | pt
+  // How many days notifications stay in the notification bar. Empty uses the standard (2 days); 0 keeps them.
+  notificationDays    Int?
   updatedAt           DateTime @updatedAt
 }
 
@@ -596,9 +598,12 @@ model Notification {
   body      String?
   link      String?
   readAt    DateTime?
+  /// When the message disappears. Empty means it stays until the person removes it.
+  expiresAt DateTime?
   createdAt DateTime  @default(now())
 
   @@index([userId, readAt, createdAt])
+  @@index([expiresAt])
 }
 
 /// A record of each announcement an administrator sent (in the notification bar and, optionally, by email).
@@ -611,6 +616,8 @@ model Broadcast {
   sendEmail   Boolean  @default(false)
   recipients  Int      @default(0)
   emailed     Int      @default(0)
+  /// How many days the message stayed in the notification bar (0 = until removed).
+  expiresInDays Int?
   createdById String?
   createdAt   DateTime @default(now())
 

@@ -16,6 +16,8 @@ export interface ServerPreferences {
   showProfilePhoto: boolean;
   theme: 'system' | 'light' | 'dark';
   language: 'en' | 'fr' | 'es' | 'pt';
+  /** Days notifications stay in the bar. null = the standard (2 days); 0 = keep until removed. */
+  notificationDays: number | null;
 }
 
 /** Loads preferences from the server, tracks local edits and saves the chosen keys. */

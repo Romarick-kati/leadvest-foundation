@@ -19,7 +19,9 @@ export default function PaymentReturn() {
   const t = useT();
   useDocumentTitle(t('pay.confirming'));
   const [params] = useSearchParams();
-  const id = params.get('payment');
+  // Some providers add their own parameters with a second "?" or drop ours: read the id from either place.
+  const rawId = params.get('payment') ?? '';
+  const id = rawId.split('?')[0] || params.get('trxref')?.replace(/^lvf-/, '') || null;
   // Flutterwave adds these when it sends the payer back. They are only hints: our server asks Flutterwave.
   const returnStatus = params.get('status');
   const transactionId = params.get('transaction_id');
@@ -39,6 +41,8 @@ export default function PaymentReturn() {
     refetchIntervalInBackground: true,
   });
   const status = q.data?.status;
+  // A failed registration payment goes back to the registrations list; only the access fee has its own page.
+  const retryPath = q.data?.purpose === 'REGISTRATION' ? '/account' : '/subscribe';
 
   useEffect(() => {
     if (status === 'PAID') void refresh();
@@ -48,7 +52,7 @@ export default function PaymentReturn() {
     return (
       <AuthShell title={t('pay.failedTitle')}>
         <p className="text-ink-muted">{t('pay.failedText')}</p>
-        <Button className="mt-6 w-full" size="lg" onClick={() => navigate('/subscribe')}>{t('pay.tryAgain')}</Button>
+        <Button className="mt-6 w-full" size="lg" onClick={() => navigate(retryPath)}>{t('pay.tryAgain')}</Button>
       </AuthShell>
     );
   }
@@ -57,7 +61,7 @@ export default function PaymentReturn() {
       <AuthShell title={t('pay.successTitle')}>
         <div className="relative mb-4 flex justify-center"><Celebration /></div>
         <p className="text-ink-muted">{t('pay.successText')}</p>
-        <Button className="mt-6 w-full" size="lg" onClick={() => user && navigate(homeFor({ ...user, access: user.access ? { ...user.access, active: true } : undefined }), { replace: true })}>{t('pay.continue')}</Button>
+        <Button className="mt-6 w-full" size="lg" onClick={() => user && navigate(q.data?.purpose === 'REGISTRATION' ? '/account' : homeFor({ ...user, access: user.access ? { ...user.access, active: true } : undefined }), { replace: true })}>{t('pay.continue')}</Button>
       </AuthShell>
     );
   }
@@ -65,7 +69,7 @@ export default function PaymentReturn() {
     return (
       <AuthShell title={t('pay.failedTitle')}>
         <p className="text-ink-muted">{t('pay.failedText')}</p>
-        <Button className="mt-6 w-full" size="lg" onClick={() => navigate('/subscribe')}>{t('pay.tryAgain')}</Button>
+        <Button className="mt-6 w-full" size="lg" onClick={() => navigate(retryPath)}>{t('pay.tryAgain')}</Button>
         <p className="mt-4 text-center text-sm"><Link to="/contact">{t('pay.help')}</Link></p>
       </AuthShell>
     );
@@ -76,7 +80,7 @@ export default function PaymentReturn() {
       {waited && (
         <div className="mt-6 space-y-3 text-sm text-ink-muted">
           <p>This is taking longer than usual. If you finished paying, your payment will appear here as soon as the payment service confirms it. You do not need to pay again. If you did not pay, you can start again.</p>
-          <Button className="w-full" variant="secondary" onClick={() => navigate('/subscribe')}>{t('pay.tryAgain')}</Button>
+          <Button className="w-full" variant="secondary" onClick={() => navigate(retryPath)}>{t('pay.tryAgain')}</Button>
           <p className="text-center"><Link to="/contact">{t('pay.help')}</Link></p>
         </div>
       )}

@@ -1,14 +1,14 @@
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2 } from '../ui/icons';
 import { m } from 'framer-motion';
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { useSite } from '../../lib/site';
-import { useT } from '../../i18n';
 import { formatMoney } from '../../lib/format';
 import { Alert, Button, ButtonLink, Checkbox, FormError, Select, TextArea } from '../ui';
+import { PayButtons } from './PayButtons';
 
 interface LearnerLink {
   linkStatus: 'VERIFIED' | 'PENDING';
@@ -39,8 +39,6 @@ export function RegistrationPanel({ kind, id, title, open, priceCents, currency,
   const { user } = useAuth();
   const { site } = useSite();
   const location = useLocation();
-  const t = useT();
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const [learnerId, setLearnerId] = useState('');
   const [notes, setNotes] = useState('');
@@ -59,19 +57,19 @@ export function RegistrationPanel({ kind, id, title, open, priceCents, currency,
     },
   });
 
-  const checkout = useMutation({
-    mutationFn: (provider?: string) => api.post<{ redirectUrl: string; paymentId: string }>('/payments/checkout', { registrationId: result!.id, idempotencyKey: `reg-${result!.id}${provider ? `-${provider}` : ''}`, provider }),
-    onSuccess: (r) => {
-      const url = new URL(r.redirectUrl, window.location.origin);
-      if (url.origin === window.location.origin) navigate(url.pathname);
-      else window.location.assign(r.redirectUrl);
-    },
+  // A person who already registered but has not paid yet must be able to pay from here, instead of being told they are already registered.
+  const mine = useQuery({
+    queryKey: ['registrations', 'mine'],
+    queryFn: () => api.get<{ id: string; eventId: string | null; programId: string | null; status: string; paymentStatus: string }[]>('/registrations/mine'),
+    enabled: canRegister && Boolean(user?.emailVerified),
   });
+  const existing = (mine.data ?? []).filter((r) => (kind === 'event' ? r.eventId === id : r.programId === id) && r.status !== 'CANCELLED');
+  const unpaid = existing.find((r) => r.status === 'PENDING' && r.paymentStatus === 'PENDING');
 
   const price = formatMoney(priceCents, currency);
   const featureOn = kind === 'event' ? site.features.eventRegistration : site.features.programRegistration;
 
-  if (!open || !featureOn) {
+  if ((!open || !featureOn) && !unpaid) {
     return <Alert tone="info" title="Registration is not open">{closedMessage ?? 'Please contact us if you would like to know when registration opens.'}</Alert>;
   }
 
@@ -111,32 +109,35 @@ export function RegistrationPanel({ kind, id, title, open, priceCents, currency,
           </div>
         </div>
         {result.paymentRequired && result.status === 'PENDING' && (
-          site.integrations?.payments === 'disabled' ? (
-            <Alert tone="info">Online payment is not available yet. The foundation will contact you with payment instructions.</Alert>
-          ) : (
-            <>
-              <FormError message={checkout.error instanceof ApiError ? checkout.error.message : checkout.error ? 'Payment could not start.' : null} />
-              {(site.integrations?.paymentProviders?.length ?? 0) > 1 ? (
-                <div className="space-y-3">
-                  <p className="text-sm font-semibold text-heading">Choose how to pay{price && ` (${price})`}</p>
-                  {site.integrations!.paymentProviders!.map((p) => (
-                    <button key={p} type="button" disabled={checkout.isPending} onClick={() => checkout.mutate(p)} className="flex w-full items-center justify-between gap-4 rounded-xl border-2 border-line-strong bg-surface p-4 text-left transition hover:border-teal hover:shadow-soft disabled:opacity-60">
-                      <span>
-                        <span className="block text-base font-bold text-heading">{p === 'flutterwave' ? t('pay.card') : t('pay.momo')}</span>
-                        <span className="block text-sm text-ink-muted">{p === 'flutterwave' ? t('pay.cardHint') : t('pay.momoHint')}</span>
-                      </span>
-                      <span className="shrink-0 text-sm font-semibold text-blue-700">{checkout.isPending ? '…' : 'Pay'}</span>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <Button onClick={() => checkout.mutate(undefined)} loading={checkout.isPending}>Continue to payment {price && `(${price})`}</Button>
-              )}
-            </>
-          )
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-heading">Choose how to pay</p>
+            <PayButtons registrationId={result.id} currency={currency} />
+          </div>
         )}
         <Link to="/account" className="inline-block text-sm font-semibold">View my registrations</Link>
       </m.div>
+    );
+  }
+
+  if (unpaid && !result) {
+    return (
+      <div className="space-y-4" role="status">
+        <Alert tone="info" title="You are registered. Payment is still needed">Your place for {title} is reserved until payment is confirmed. Choose how to pay.</Alert>
+        <PayButtons registrationId={unpaid.id} currency={currency} />
+        <Link to="/account" className="inline-block text-sm font-semibold">View my registrations</Link>
+      </div>
+    );
+  }
+  if (existing.length > 0 && !result && !isParent) {
+    const r = existing[0];
+    return (
+      <div className="space-y-3" role="status">
+        <div className="flex items-start gap-3 rounded-lg border border-mint bg-mint-50 p-4">
+          <CheckCircle2 className="mt-0.5 shrink-0 text-mint-700" aria-hidden />
+          <p className="text-sm text-ink"><strong className="text-heading">You are registered for {title}.</strong> {r.status === 'CONFIRMED' ? 'Your place is confirmed.' : r.status === 'WAITLISTED' ? 'You are on the waiting list.' : 'The foundation will confirm by email.'}</p>
+        </div>
+        <Link to="/account" className="inline-block text-sm font-semibold">View my registrations</Link>
+      </div>
     );
   }
 

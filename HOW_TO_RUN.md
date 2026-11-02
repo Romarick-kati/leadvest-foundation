@@ -106,6 +106,8 @@ The price: `ACCESS_FEE_XAF` (in FCFA, minimum 100). For people paying by card fr
 1. Create a Flutterwave business account at flutterwave.com and choose Cameroon. They verify your business (registration documents and ID), which can take a few days. Flutterwave is licensed to operate in Cameroon. Cards from other countries are handled by Flutterwave; you are paid out to your bank or mobile money account.
 2. Dashboard > **Settings > API**: copy your **Secret key**. Test keys contain `FLWSECK_TEST`. (You do not need the public key or encryption key.)
 3. In Netlify add `FLUTTERWAVE_SECRET_KEY` and `FLUTTERWAVE_SECRET_HASH` (a secret you invent).
+
+Notch Pay (cards and mobile money, built for Cameroon): add `NOTCHPAY_PUBLIC_KEY` (the public key) and `NOTCHPAY_HASH_KEY` (the hash key), set `PAYMENTS_MODE` to `fapshi+notchpay`, and in the Notch Pay dashboard add the webhook `https://YOUR-SITE/api/payments/webhooks/notchpay` for the events payment.complete and payment.failed.
 4. Dashboard > **Settings > Webhooks**: URL `https://YOUR-SITE/api/payments/webhooks/flutterwave`, Secret hash = the same value you put in Netlify. Save.
 5. Test with Flutterwave's test cards (see their "Testing" page) in test mode.
 

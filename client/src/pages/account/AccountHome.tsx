@@ -13,8 +13,8 @@ interface Registration {
   status: string;
   paymentStatus: string;
   createdAt: string;
-  event: { title: string; slug: string; startsAt: string } | null;
-  program: { title: string; slug: string } | null;
+  event: { title: string; slug: string; startsAt: string; priceCents: number | null; currency: string | null } | null;
+  program: { title: string; slug: string; priceCents: number | null; currency: string | null } | null;
   learner: { id: string; displayName: string } | null;
 }
 
@@ -87,7 +87,7 @@ export default function AccountHome() {
                       <Button size="sm" variant="ghost" onClick={() => window.confirm('Cancel this registration?') && cancel.mutate(r.id)}>Cancel</Button>
                     )}
                   </div>
-                  {r.status !== 'CANCELLED' && r.paymentStatus === 'PENDING' && <div className="basis-full pt-3"><p className="mb-2 text-sm font-semibold text-heading">Payment due. Choose how to pay:</p><PayButtons registrationId={r.id} /></div>}
+                  {r.status !== 'CANCELLED' && r.paymentStatus === 'PENDING' && <div className="basis-full pt-3"><p className="mb-2 text-sm font-semibold text-heading">Payment due. Choose how to pay:</p><PayButtons registrationId={r.id} currency={(r.event ?? r.program)?.currency} /></div>}
                 </li>
               ))}
             </ul>

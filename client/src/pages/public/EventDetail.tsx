@@ -4,7 +4,7 @@ import { CalendarDays, ChevronLeft, ExternalLink, MapPin, Monitor, Ticket, Users
 import { api, ApiError } from '../../lib/api';
 import type { EventDetail as Ev } from '../../lib/types';
 import { useDocumentTitle } from '../../lib/useDocumentTitle';
-import { formatDateTime, formatMoney } from '../../lib/format';
+import { formatDateTime, formatMoney, registrationClosesAt, viewerTimeZone } from '../../lib/format';
 import { SmartImage } from '../../components/brand/SmartImage';
 import { EventDateTile, eventStatusBadge } from '../../components/content/EventItem';
 import { AdminQuickBar } from '../../components/content/AdminQuickBar';
@@ -14,13 +14,17 @@ import NotFound from './NotFound';
 
 export default function EventDetail() {
   const { slug } = useParams();
-  const q = useQuery({ queryKey: ['event', slug], queryFn: () => api.get<Ev>(`/events/${slug}`) });
+  const q = useQuery({ queryKey: ['event', slug], queryFn: () => api.get<Ev>(`/events/${slug}`), refetchInterval: 30_000 });
   useDocumentTitle(q.data?.title ?? 'Event', q.data?.summary);
   if (q.isLoading) return <PageLoader />;
   if ((q.error instanceof ApiError && q.error.status === 404) || !q.data) return <NotFound />;
   const e = q.data;
-  const deadlinePassed = e.registrationDeadline ? new Date(e.registrationDeadline) < new Date() : false;
-  const canRegister = e.registrationOpen && e.eventStatus === 'SCHEDULED' && !deadlinePassed && new Date(e.startsAt) > new Date();
+  // Registration stays open until the deadline, or until the event is over when there is no deadline.
+  const closed = registrationClosesAt(e) < new Date();
+  const deadlinePassed = Boolean(e.registrationDeadline) && closed;
+  const canRegister = e.registrationOpen && e.eventStatus === 'SCHEDULED' && !closed;
+  const myZone = viewerTimeZone();
+  const showMyTime = Boolean(myZone) && myZone !== e.timezone && formatDateTime(e.startsAt, myZone) !== formatDateTime(e.startsAt, e.timezone);
   const price = formatMoney(e.priceCents, e.currency);
 
   return (
@@ -67,7 +71,7 @@ export default function EventDetail() {
                   open={canRegister}
                   priceCents={e.priceCents}
                   currency={e.currency}
-                  closedMessage={deadlinePassed ? 'The registration deadline has passed.' : undefined}
+                  closedMessage={deadlinePassed ? 'The registration deadline has passed.' : closed ? 'This event has finished.' : undefined}
                 />
               )}
             </Panel>
@@ -76,7 +80,7 @@ export default function EventDetail() {
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <Panel title="Event details">
             <dl className="space-y-4 text-heading">
-              <div className="flex gap-3"><CalendarDays size={18} className="mt-0.5 text-blue-600" aria-hidden /><div><dt className="sr-only">Date and time</dt><dd>{formatDateTime(e.startsAt, e.timezone)}{e.endsAt && <> to {formatDateTime(e.endsAt, e.timezone)}</>}<span className="block text-caption text-ink-muted">Time zone: {e.timezone}</span></dd></div></div>
+              <div className="flex gap-3"><CalendarDays size={18} className="mt-0.5 text-blue-600" aria-hidden /><div><dt className="sr-only">Date and time</dt><dd>{formatDateTime(e.startsAt, e.timezone)}{e.endsAt && <> to {formatDateTime(e.endsAt, e.timezone)}</>}<span className="block text-caption text-ink-muted">Time zone: {e.timezone}</span>{showMyTime && <span className="mt-1 block text-caption font-semibold text-blue-700">Your time ({myZone}): {formatDateTime(e.startsAt, myZone)}{e.endsAt && <> to {formatDateTime(e.endsAt, myZone)}</>}</span>}</dd></div></div>
               <div className="flex gap-3">{e.locationType === 'ONLINE' ? <Monitor size={18} className="mt-0.5 text-blue-600" aria-hidden /> : <MapPin size={18} className="mt-0.5 text-blue-600" aria-hidden />}<div><dt className="sr-only">Location</dt><dd>{e.locationType === 'ONLINE' ? 'Online. Joining details are sent to registered participants.' : e.location ?? 'Location to be confirmed'}{e.locationType === 'HYBRID' && ' (also online)'}</dd></div></div>
               {e.audience && <div className="flex gap-3"><Users size={18} className="mt-0.5 text-blue-600" aria-hidden /><div><dt className="sr-only">Audience</dt><dd>{e.audience}</dd></div></div>}
               <div className="flex gap-3"><Ticket size={18} className="mt-0.5 text-blue-600" aria-hidden /><div><dt className="sr-only">Cost and places</dt><dd>{price ?? 'Free'}{e.capacity != null && <span className="block text-caption text-ink-muted">{e.spacesLeft === 0 ? 'Full, waiting list available' : `${e.spacesLeft} of ${e.capacity} places left`}</span>}</dd></div></div>

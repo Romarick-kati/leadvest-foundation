@@ -1,3 +1,4 @@
+import { looksLikeImage, resizeImage } from '../../lib/imageResize';
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Copy, Lock, Trash2, Upload } from '../../components/ui/icons';
@@ -20,9 +21,13 @@ export default function MediaAdmin() {
   const [alt, setAlt] = useState('');
   const list = useQuery({ queryKey: ['admin', 'media'], queryFn: () => api.get<Asset[]>('/admin/media') });
   const upload = useMutation({
-    mutationFn: (file: File) => {
+    mutationFn: async (file: File) => {
+      if (!looksLikeImage(file)) throw new Error('That file is not a picture. Please choose a JPG, PNG or WebP image.');
       const fd = new FormData();
-      fd.append('file', file);
+      // Any picture type works: others are converted in the browser, and big files are shrunk to fit.
+      const ready = ['image/png', 'image/jpeg', 'image/webp'].includes(file.type) && file.size <= 3_200_000;
+      if (ready) fd.append('file', file);
+      else fd.append('file', await resizeImage(file), 'picture.jpg');
       fd.append('folder', folder);
       fd.append('visibility', visibility);
       fd.append('altText', alt);
@@ -45,11 +50,11 @@ export default function MediaAdmin() {
           <Select label="Visibility" value={visibility} onChange={(e) => setVisibility(e.target.value)} options={[{ value: 'PUBLIC', label: 'Public' }, { value: 'PRIVATE', label: 'Private' }]} />
           <TextField label="Description (alt text)" value={alt} onChange={(e) => setAlt(e.target.value)} />
           <div>
-            <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" id="media-file" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.target.value = ''; }} />
+            <input ref={fileRef} type="file" accept="image/*,.jfif,.heic,.avif" className="sr-only" id="media-file" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.target.value = ''; }} />
             <Button className="w-full" icon={<Upload size={16} />} loading={upload.isPending} onClick={() => fileRef.current?.click()}>Choose image</Button>
           </div>
         </div>
-        <p className="mt-3 text-caption text-ink-muted">PNG, JPEG or WebP. Files are checked by content, renamed and stored outside the code. SVG files are refused for security.</p>
+        <p className="mt-3 text-caption text-ink-muted">Any normal picture works (JPG, PNG, WebP, GIF, AVIF). It is converted and resized for you. SVG files are refused for security.</p>
       </Panel>
       {list.isLoading ? <TableSkeleton /> : list.data && list.data.length > 0 ? (
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">

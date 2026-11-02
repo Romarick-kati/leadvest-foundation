@@ -30,7 +30,9 @@ describe('SimpleMarkdown', () => {
 describe('formatMoney', () => {
   it('returns null when no price is set', () => {
     expect(formatMoney(null, 'XAF')).toBeNull();
-    expect(formatMoney(1000, null)).toBeNull();
+  });
+  it('shows FCFA when the currency is missing', () => {
+    expect(formatMoney(1000, null)).toMatch(/FCFA|XAF/);
   });
   it('formats a whole currency amount', () => {
     expect(formatMoney(500000, 'XAF')).toMatch(/5[,.\s\u202f]?000/);

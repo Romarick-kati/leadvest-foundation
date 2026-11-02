@@ -5,7 +5,15 @@ import { useForm } from '../../components/forms/useForm';
 import { Alert, Button, EmptyState, FormError, Panel, Select, TextArea, TextField, Toggle, useToast } from '../../components/ui';
 import { AdminPage } from './shared';
 
-interface Broadcast { id: string; title: string; audience: string; sendEmail: boolean; recipients: number; emailed: number; createdAt: string }
+interface Broadcast { id: string; title: string; audience: string; sendEmail: boolean; recipients: number; emailed: number; expiresInDays: number | null; createdAt: string }
+const stayOptions = [
+  { value: '1', label: '1 day' },
+  { value: '2', label: '2 days (standard)' },
+  { value: '7', label: '1 week' },
+  { value: '30', label: '30 days' },
+  { value: '0', label: 'Until people remove it' },
+];
+const stayLabel = (d: number | null) => (d === 0 ? 'stays until removed' : d ? `disappears after ${d === 1 ? '1 day' : d === 7 ? '1 week' : `${d} days`}` : '');
 const audiences = [
   { value: 'EVERYONE', label: 'Everyone (parents, young people, members, instructors)' },
   { value: 'PARENTS', label: 'Parents and guardians' },
@@ -20,13 +28,13 @@ export default function AnnouncementsAdmin() {
   const toast = useToast();
   const config = useQuery({ queryKey: ['admin', 'overview-config'], queryFn: () => api.get<{ integrations?: { emailDelivery: boolean } }>('/admin/overview').catch(() => ({ integrations: undefined })) });
   const history = useQuery({ queryKey: ['admin', 'broadcasts'], queryFn: () => api.get<{ items: Broadcast[] }>('/admin/broadcasts') });
-  const form = useForm({ title: '', body: '', link: '', audience: 'EVERYONE', sendEmail: false });
+  const form = useForm({ title: '', body: '', link: '', audience: 'EVERYONE', sendEmail: false, expiresInDays: '2' });
   const send = useMutation({
-    mutationFn: () => api.post<Broadcast>('/admin/broadcasts', { ...form.values, link: form.values.link.trim() }),
+    mutationFn: () => api.post<Broadcast>('/admin/broadcasts', { ...form.values, link: form.values.link.trim(), expiresInDays: Number(form.values.expiresInDays) }),
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ['admin', 'broadcasts'] });
       toast(`Sent to ${r.recipients} ${r.recipients === 1 ? 'person' : 'people'}${r.sendEmail ? `, and ${r.emailed} email${r.emailed === 1 ? '' : 's'}` : ''}.`);
-      form.setValues({ title: '', body: '', link: '', audience: form.values.audience, sendEmail: false });
+      form.setValues({ title: '', body: '', link: '', audience: form.values.audience, sendEmail: false, expiresInDays: form.values.expiresInDays });
     },
     onError: (e: Error) => form.setFormError(e.message),
   });
@@ -41,6 +49,7 @@ export default function AnnouncementsAdmin() {
             <TextField label="Title" {...form.bind('title')} hint="Short and clear, for example: Registration for the holiday camp is open." />
             <TextArea label="Message" rows={5} {...form.bind('body')} />
             <TextField label="Link (optional)" {...form.bind('link')} hint="A page on this site such as /events, or a full https:// address. People tap the notification to go there." />
+            <Select label="How long should it stay?" hint="After this time the message disappears from everyone's notification bar. People can also choose their own time in Settings > Notifications, and that choice is used for them." options={stayOptions} {...form.bind('expiresInDays')} />
             <Toggle label="Also send by email" hint="Email only goes to people who confirmed their email and chose to receive news in Settings > Notifications. Everyone else still sees it in the notification bar." checked={form.values.sendEmail} onChange={(v) => form.setValues({ ...form.values, sendEmail: v })} />
             {form.values.sendEmail && emailOn === false && <Alert tone="warning" title="Email delivery is not connected yet">The announcement will still reach the notification bar. To send emails, set EMAIL_TRANSPORT=resend, RESEND_API_KEY and EMAIL_FROM in your hosting settings.</Alert>}
             <Button type="submit" loading={send.isPending}>Send announcement</Button>
@@ -52,7 +61,7 @@ export default function AnnouncementsAdmin() {
               {history.data.items.map((b) => (
                 <li key={b.id} className="py-3">
                   <p className="font-semibold text-heading">{b.title}</p>
-                  <p className="text-caption text-ink-muted">{formatDateTime(b.createdAt)} · {b.recipients} in notification bar{b.sendEmail ? ` · ${b.emailed} emailed` : ''}</p>
+                  <p className="text-caption text-ink-muted">{formatDateTime(b.createdAt)} · {b.recipients} in notification bar{b.sendEmail ? ` · ${b.emailed} emailed` : ''}{b.expiresInDays !== null && ` · ${stayLabel(b.expiresInDays)}`}</p>
                 </li>
               ))}
             </ul>

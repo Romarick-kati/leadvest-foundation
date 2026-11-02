@@ -46,7 +46,7 @@ export interface SiteSettings {
   impact: { asOf: string | null; note: string | null; items: ImpactItem[] };
   legal: { legalName: string | null; registrationNumber: string | null; dataRetention: string | null; safeguardingName: string | null; safeguardingContact: string | null; governingLaw: string | null; refundPolicy: string | null; lastReviewed: string | null };
   policies: { privacyApproved: boolean; childSafetyApproved: boolean; termsApproved: boolean };
-  integrations?: { emailDelivery: boolean; payments: 'disabled' | 'mock' | 'fapshi' | 'flutterwave' | 'both'; paymentProviders?: string[]; donationsLive: boolean };
+  integrations?: { emailDelivery: boolean; payments: 'disabled' | 'mock' | 'fapshi' | 'flutterwave' | 'notchpay' | 'both' | 'fapshi+notchpay' | 'all'; paymentProviders?: string[]; donationsLive: boolean };
 }
 
 export interface ImpactItem {

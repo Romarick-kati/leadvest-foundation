@@ -19,6 +19,9 @@ FAPSHI_API_KEY       sandbox key (FAK_TEST_...) first, live key when you launch
 FAPSHI_WEBHOOK_SECRET a secret you invent (24+ characters); type the same one in Fapshi's webhook settings
 FLUTTERWAVE_SECRET_KEY  from Flutterwave > Settings > API (test key first, live key at launch)
 FLUTTERWAVE_SECRET_HASH a secret you invent; type the same one in Flutterwave > Settings > Webhooks
+NOTCHPAY_PUBLIC_KEY     the PUBLIC key from Notch Pay > Settings > API Keys (pk_test... for the sandbox, the live one at launch)
+NOTCHPAY_HASH_KEY       the Hash key (hsk_...) from the same page. Never use the private key (sk_...) here.
+                        PAYMENTS_MODE for MTN MoMo + Notch Pay cards is:  fapshi+notchpay
 ACCESS_FEE_USD       price for card payers abroad, for example 5 (optional)
 ACCESS_FEE_XAF       the price in FCFA, for example 2500 (leave 0 or empty = free)
 ACCESS_PERIOD_DAYS   30 (monthly)  |  365 (yearly)  |  0 (one payment for good)

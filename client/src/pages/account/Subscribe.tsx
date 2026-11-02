@@ -70,8 +70,8 @@ export default function Subscribe() {
       <FormError message={error} />
       <div className="mt-6 space-y-3">
         {(access?.providers ?? []).map((p) => {
-          const card = p === 'flutterwave';
-          const price = card && access?.feeUsd ? `$${access.feeUsd}` : money(fee);
+          const card = p === 'flutterwave' || p === 'notchpay';
+          const price = p === 'flutterwave' && access?.feeUsd ? `$${access.feeUsd}` : money(fee);
           const busy = start.isPending && chosen === p;
           return (
             <button

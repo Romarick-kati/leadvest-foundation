@@ -14,7 +14,7 @@ import NotFound from './NotFound';
 
 export default function ProgramDetail() {
   const { slug } = useParams();
-  const q = useQuery({ queryKey: ['program', slug], queryFn: () => api.get<Program>(`/programs/${slug}`) });
+  const q = useQuery({ queryKey: ['program', slug], queryFn: () => api.get<Program>(`/programs/${slug}`), refetchInterval: 30_000 });
   useDocumentTitle(q.data?.title ?? 'Program', q.data?.summary);
   if (q.isLoading) return <PageLoader />;
   if (q.error instanceof ApiError && q.error.status === 404) return <NotFound />;
@@ -27,7 +27,7 @@ export default function ProgramDetail() {
     { icon: <ListChecks size={18} />, label: 'Format', value: p.deliveryFormat },
     { icon: <CalendarClock size={18} />, label: 'Schedule', value: p.schedule },
     { icon: <Clock size={18} />, label: 'Duration', value: p.duration },
-    { icon: <Wallet size={18} />, label: 'Fees', value: p.feeInfo ?? price },
+    { icon: <Wallet size={18} />, label: 'Fees', value: price ?? p.feeInfo },
   ].filter((f) => f.value);
 
   return (

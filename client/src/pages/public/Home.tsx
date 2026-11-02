@@ -49,8 +49,8 @@ export default function Home() {
   const { site } = useSite();
   const heroRef = useRef<HTMLElement>(null);
   usePointerParallax(heroRef);
-  const programs = useQuery({ queryKey: ['programs'], queryFn: () => api.get<ProgramSummary[]>('/programs') });
-  const events = useQuery({ queryKey: ['events', 'upcoming'], queryFn: () => api.get<EventSummary[]>('/events?when=upcoming') });
+  const programs = useQuery({ queryKey: ['programs'], queryFn: () => api.get<ProgramSummary[]>('/programs'), refetchInterval: 30_000 });
+  const events = useQuery({ queryKey: ['events', 'upcoming'], queryFn: () => api.get<EventSummary[]>('/events?when=upcoming'), refetchInterval: 30_000 });
 
   return (
     <>

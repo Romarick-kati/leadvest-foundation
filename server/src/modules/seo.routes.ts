@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type NextFunction, type Request, type Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { h } from '../lib/http.js';
 import { siteUrl } from '../lib/siteUrl.js';
@@ -90,7 +90,23 @@ seoRouter.get(
       .status(status)
       .type('html')
       .set('Cache-Control', 'public, max-age=0, must-revalidate')
-      .set('Netlify-CDN-Cache-Control', status === 200 ? 'public, s-maxage=300, stale-while-revalidate=86400' : 'public, s-maxage=60')
+      .set('Netlify-CDN-Cache-Control', status === 200 ? 'public, s-maxage=30, stale-while-revalidate=300' : 'no-store')
       .send(applyTemplate(template, base, status === 200 ? meta : { ...meta, path }, { noindex: status !== 200 }));
   }),
 );
+
+/**
+ * Last stop for page addresses nothing else answered. A browser that asks for a page always gets the
+ * site itself (which shows its friendly "page not found" screen), never raw JSON. Only /api and
+ * /uploads keep the plain JSON answer, because programs, not people, call those.
+ */
+export function pageNotFound(req: Request, res: Response, next: NextFunction) {
+  if (req.method !== 'GET' || req.path.startsWith('/api') || req.path.startsWith('/uploads') || !req.accepts('html')) return next();
+  const template = loadTemplate();
+  if (!template) return next();
+  res
+    .status(404)
+    .type('html')
+    .set('Cache-Control', 'no-cache')
+    .send(applyTemplate(template, siteUrl(req), { ...NOT_FOUND, path: req.path }, { noindex: true }));
+}

@@ -15,7 +15,7 @@ const FILTER_THRESHOLD = 6;
 
 export default function Programs() {
   useDocumentTitle('Programs and activities');
-  const q = useQuery({ queryKey: ['programs'], queryFn: () => api.get<ProgramSummary[]>('/programs') });
+  const q = useQuery({ queryKey: ['programs'], queryFn: () => api.get<ProgramSummary[]>('/programs'), refetchInterval: 30_000 });
   const [format, setFormat] = useState<string>('all');
   const formats = useMemo(() => Array.from(new Set((q.data ?? []).map((p) => p.deliveryFormat).filter(Boolean))) as string[], [q.data]);
   const list = (q.data ?? []).filter((p) => format === 'all' || p.deliveryFormat === format);

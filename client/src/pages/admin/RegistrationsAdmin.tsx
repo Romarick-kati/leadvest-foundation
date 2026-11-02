@@ -32,7 +32,7 @@ export default function RegistrationsAdmin() {
     onError: (e: Error) => toast(e.message, 'error'),
   });
   const decide = (r: Row, s: string) => {
-    if (s === 'CANCELLED' && r.paymentStatus === 'PAID' && !window.confirm('This person has already paid. Refusing does not send the money back automatically: refund it from your Flutterwave dashboard. Refuse anyway?')) return;
+    if (s === 'CANCELLED' && r.paymentStatus === 'PAID' && !window.confirm('This person has already paid. Refusing does not send the money back automatically: refund it from the dashboard of your payment provider (Notch Pay, Fapshi or Flutterwave). Refuse anyway?')) return;
     update.mutate({ id: r.id, status: s });
   };
   const pending = list.data?.pendingCount ?? 0;

@@ -1,3 +1,4 @@
+import { looksLikeImage, resizeImage } from '../../lib/imageResize';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
@@ -30,7 +31,7 @@ export default function ProfileSettings() {
   });
   const choose = (f?: File) => {
     if (!f) return;
-    if (!f.type.startsWith('image/')) return toast('Please choose an image file (PNG, JPEG or WebP).', 'error');
+    if (!looksLikeImage(f)) return toast('That file is not a picture. Please choose a JPG, PNG or WebP image.', 'error');
     setPreview(URL.createObjectURL(f));
     upload.mutate(f);
   };
@@ -46,7 +47,7 @@ export default function ProfileSettings() {
       <SettingsHeader title="Profile" description="How your name appears on the website." />
       <div className="space-y-6">
         {!isLearner && (
-          <Panel title="Profile picture" description="Optional. PNG, JPEG or WebP, up to 5 MB.">
+          <Panel title="Profile picture" description="Optional. Any normal picture works.">
             <div className="flex flex-wrap items-center gap-5">
               {preview ? <img src={preview} alt="" width={72} height={72} className="h-[72px] w-[72px] rounded-full object-cover" /> : <Avatar name={user.displayName} src={user.avatarUrl} size={72} />}
               <div className="flex flex-wrap gap-3">
@@ -92,12 +93,13 @@ export default function ProfileSettings() {
 
 /** Shrinks a chosen photo to a square JPEG (max 640 px) so phone photos and large files upload reliably. */
 async function prepareAvatar(file: File): Promise<Blob> {
-  const url = URL.createObjectURL(file);
+  const square = await resizeImage(file, 1280);
+  const url = URL.createObjectURL(square);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const i = new Image();
       i.onload = () => resolve(i);
-      i.onerror = () => reject(new Error('That picture could not be read. Please use a PNG, JPEG or WebP image.'));
+      i.onerror = () => reject(new Error('That picture could not be read. Please try a JPG or PNG.'));
       i.src = url;
     });
     const side = Math.min(img.naturalWidth, img.naturalHeight);
@@ -106,10 +108,9 @@ async function prepareAvatar(file: File): Promise<Blob> {
     canvas.width = out;
     canvas.height = out;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return file;
+    if (!ctx) return square;
     ctx.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, out, out);
-    const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', 0.88));
-    return blob ?? file;
+    return (await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', 0.88))) ?? square;
   } finally {
     URL.revokeObjectURL(url);
   }

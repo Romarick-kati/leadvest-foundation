@@ -116,6 +116,25 @@ describe('payments (simulation)', () => {
     expect(await prisma.payment.count()).toBe(1);
   });
 
+  it('still starts payment when an event was saved with a broken currency such as 100', async () => {
+    const { c, reg } = await paidEventRegistration();
+    await prisma.event.updateMany({ data: { currency: '100' } });
+    const checkout = await c.post('/api/payments/checkout').send({ registrationId: reg.id, idempotencyKey: 'bad-currency-1' });
+    expect(checkout.status).toBe(201);
+    const payment = await prisma.payment.findFirstOrThrow();
+    expect(payment.currency).toBe('XAF');
+  });
+
+  it('refuses Mobile Money for a price that is not in FCFA, and the admin cannot save a broken currency', async () => {
+    const { c, reg } = await paidEventRegistration();
+    await prisma.event.updateMany({ data: { currency: 'USD' } });
+    const momo = await c.post('/api/payments/checkout').send({ registrationId: reg.id, idempotencyKey: 'usd-key-001', provider: 'mock' });
+    expect(momo.status).toBe(201); // the test provider is not Mobile Money, so it is allowed
+    const { c: a } = await adminClient();
+    const bad = await a.post('/api/admin/events').send({ title: 'Bad money', summary: 's', description: 'd', startsAt: future(5).toISOString(), currency: '100' });
+    expect(bad.status).toBe(400);
+  });
+
   it('rejects unsigned webhooks and ignores duplicate deliveries', async () => {
     const { c, reg } = await paidEventRegistration();
     const checkout = await c.post('/api/payments/checkout').send({ registrationId: reg.id, idempotencyKey: 'key-dupes' });

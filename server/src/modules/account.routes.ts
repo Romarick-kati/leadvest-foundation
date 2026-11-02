@@ -19,6 +19,7 @@ import {
 } from './twoFactor.js';
 import { appLink, issueToken } from './tokens.js';
 import { sendEmail } from '../services/email/index.js';
+import { DEFAULT_NOTIFICATION_DAYS } from '../services/notify.js';
 import { templates } from '../services/email/templates.js';
 
 export const accountRouter = Router();
@@ -108,6 +109,8 @@ const prefsSchema = z
     showProfilePhoto: z.boolean(),
     theme: z.enum(['system', 'light', 'dark']),
     language: z.enum(['en', 'fr', 'es', 'pt']),
+    // Days notifications stay in the bar. Empty = the standard; 0 = keep until removed.
+    notificationDays: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(7), z.literal(30)]).nullable(),
   })
   .partial()
   .strict();
@@ -138,6 +141,12 @@ accountRouter.patch(
       create: { userId: user.id, ...body },
       update: body,
     });
+    // A new choice applies to the messages already in the bar too, counted from when each one arrived.
+    if (body.notificationDays !== undefined) {
+      const days = body.notificationDays ?? DEFAULT_NOTIFICATION_DAYS;
+      if (days > 0) await prisma.$executeRaw`UPDATE "Notification" SET "expiresAt" = "createdAt" + (${days}::int * INTERVAL '1 day') WHERE "userId" = ${user.id}`;
+      else await prisma.notification.updateMany({ where: { userId: user.id }, data: { expiresAt: null } });
+    }
     send(res, prefs);
   }),
 );
@@ -446,9 +455,11 @@ accountRouter.get(
   '/notifications',
   h(async (req, res) => {
     const userId = req.auth!.user.id;
+    // Messages past their time are hidden at once; the hourly cleanup removes them for good.
+    const live = { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] };
     const [items, unread] = await Promise.all([
-      prisma.notification.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 30 }),
-      prisma.notification.count({ where: { userId, readAt: null } }),
+      prisma.notification.findMany({ where: { userId, ...live }, orderBy: { createdAt: 'desc' }, take: 30 }),
+      prisma.notification.count({ where: { userId, readAt: null, ...live } }),
     ]);
     send(res, { items, unread });
   }),

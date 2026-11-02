@@ -1,6 +1,6 @@
 import { useDocumentTitle } from '../../lib/useDocumentTitle';
 import { useSite } from '../../lib/site';
-import { Alert, Button, FormError, Panel, TableSkeleton, Toggle, useToast } from '../../components/ui';
+import { Alert, Button, FormError, Panel, Select, TableSkeleton, Toggle, useToast } from '../../components/ui';
 import { SettingsHeader, SettingsLoadError } from './SettingsLayout';
 import { usePreferencesForm } from './usePreferencesForm';
 
@@ -8,10 +8,10 @@ export default function NotificationSettings() {
   useDocumentTitle('Notification settings');
   const toast = useToast();
   const { site } = useSite();
-  const f = usePreferencesForm(['securityAlerts', 'newsletterOptIn', 'eventAnnouncements', 'programUpdates']);
+  const f = usePreferencesForm(['securityAlerts', 'newsletterOptIn', 'eventAnnouncements', 'programUpdates', 'notificationDays']);
   return (
     <>
-      <SettingsHeader title="Notifications" description="Choose which optional emails you receive." />
+      <SettingsHeader title="Notifications" description="Choose which messages you receive and how long they stay." />
       {site.integrations && !site.integrations.emailDelivery && (
         <Alert tone="info" className="mb-6">Email delivery has not been set up on this website yet. Your choices are saved and will apply once it is.</Alert>
       )}
@@ -33,6 +33,22 @@ export default function NotificationSettings() {
               <Toggle label="Event announcements" hint="When new events are published." checked={f.draft.eventAnnouncements} onChange={(v) => f.set('eventAnnouncements', v)} />
               <Toggle label="Program updates" hint="When new programs open for registration." checked={f.draft.programUpdates} onChange={(v) => f.set('programUpdates', v)} />
             </div>
+          </Panel>
+          <Panel title="Messages in the notification bar" description="News from the foundation appears in the bell at the top of the page. Choose how long it stays before it disappears.">
+            <Select
+              label="Remove messages after"
+              hint="This applies to all your messages, including the ones you already have."
+              value={f.draft.notificationDays === null ? 'default' : String(f.draft.notificationDays)}
+              onChange={(e) => f.set('notificationDays', e.target.value === 'default' ? null : Number(e.target.value))}
+              options={[
+                { value: 'default', label: 'Standard (2 days)' },
+                { value: '1', label: '1 day' },
+                { value: '2', label: '2 days' },
+                { value: '7', label: '1 week' },
+                { value: '30', label: '30 days' },
+                { value: '0', label: 'Keep them until I remove them' },
+              ]}
+            />
           </Panel>
           <FormError message={f.error} />
           <div className="flex items-center gap-3">

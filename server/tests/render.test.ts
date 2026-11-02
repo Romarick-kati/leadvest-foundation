@@ -32,6 +32,26 @@ describe('pages made from the database', () => {
     expect(res.headers['netlify-cdn-cache-control']).toContain('s-maxage');
   });
 
+  it('shows the page when it is asked for by its own address, as happens when a visitor refreshes or opens a shared link', async () => {
+    // Netlify may pass the address the visitor typed, without the internal /api/render part.
+    const direct = (path: string) => client().get(path).set('X-Forwarded-Host', 'example.org');
+    const ev = await direct('/events/open-day');
+    expect(ev.status).toBe(200);
+    expect(ev.type).toContain('html');
+    expect(ev.text).toContain('<title>Open Day | Lead Vest Foundation</title>');
+    expect((await direct('/programs')).status).toBe(200);
+    const missing = await direct('/programs/does-not-exist');
+    expect(missing.status).toBe(404);
+    expect(missing.type).toContain('html');
+    // Any other page address gets the site (with its friendly not found screen), never raw JSON.
+    const unknown = await client().get('/some/page/that/does/not/exist').set('Accept', 'text/html');
+    expect(unknown.status).toBe(404);
+    expect(unknown.type).toContain('html');
+    expect(unknown.text).not.toContain('"error"');
+    // The API keeps its JSON answer.
+    expect((await client().get('/api/nothing-here')).body.error.code).toBe('not_found');
+  });
+
   it('lists published programs with links, and never a draft', async () => {
     const res = await get('/programs');
     expect(res.status).toBe(200);

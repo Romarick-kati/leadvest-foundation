@@ -264,6 +264,8 @@ const broadcastSchema = z.object({
   link: z.string().trim().max(300).regex(/^(\/|https:\/\/)/, 'Use a page address starting with / or https://').optional().or(z.literal('')),
   audience: z.enum(['EVERYONE', 'PARENTS', 'YOUTH', 'MEMBERS', 'INSTRUCTORS', 'EMAIL_SUBSCRIBERS']),
   sendEmail: z.boolean(),
+  // How long it stays in the notification bar: 0 keeps it until people remove it. Default 2 days.
+  expiresInDays: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(7), z.literal(30)]).default(2),
 });
 
 adminPeopleRouter.get(
@@ -278,8 +280,8 @@ adminPeopleRouter.post(
   h(async (req, res) => {
     const body = parse(broadcastSchema, req.body);
     const audience = body.audience as Audience;
-    const result = await announce({ audience, topic: 'newsletterOptIn', email: body.sendEmail, kind: 'general', title: body.title, body: body.body, link: body.link || null });
-    const record = await prisma.broadcast.create({ data: { title: body.title, body: body.body, link: body.link || null, audience: body.audience, sendEmail: body.sendEmail, recipients: result.recipients, emailed: result.emailed, createdById: req.auth!.user.id } });
+    const result = await announce({ audience, topic: 'newsletterOptIn', email: body.sendEmail, kind: 'general', title: body.title, body: body.body, link: body.link || null, days: body.expiresInDays });
+    const record = await prisma.broadcast.create({ data: { title: body.title, body: body.body, link: body.link || null, audience: body.audience, sendEmail: body.sendEmail, recipients: result.recipients, emailed: result.emailed, expiresInDays: body.expiresInDays, createdById: req.auth!.user.id } });
     await audit(req, 'broadcast.sent', { type: 'broadcast', id: record.id }, { audience: body.audience, recipients: result.recipients, emailed: result.emailed });
     send(res, record, 201);
   }),

@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Check, Copy, ExternalLink } from '../../components/ui/icons';
-import { Panel } from '../../components/ui';
+import { Alert, Panel } from '../../components/ui';
+import { Trash2 } from '../../components/ui/icons';
+import { useSite } from '../../lib/site';
+import { asCurrency } from '../../lib/format';
 
 /**
  * The public link of a saved event or program, with copy and open buttons. A link to something
@@ -47,7 +50,7 @@ export function ShareLink({ path, published, onPublish, publishing }: { path: st
 }
 
 /** Compact Edit, Copy link and Open buttons for a row in a list. Drafts say so instead of offering a link that would not work. */
-export function RowActions({ editTo, path, published }: { editTo: string; path: string; published: boolean }) {
+export function RowActions({ editTo, path, published, onDelete, deleting }: { editTo: string; path: string; published: boolean; onDelete?: () => void; deleting?: boolean }) {
   const [copied, setCopied] = useState(false);
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   const copy = async (e: React.MouseEvent) => {
@@ -73,6 +76,70 @@ export function RowActions({ editTo, path, published }: { editTo: string; path: 
       ) : (
         <span className="text-caption text-ink-muted">Draft: no public link yet</span>
       )}
+      {onDelete && (
+        <button type="button" disabled={deleting} onClick={(e) => { e.stopPropagation(); onDelete(); }} className="inline-flex min-h-9 items-center gap-1 rounded-full border border-danger/40 px-3 text-sm font-semibold text-danger hover:bg-danger/10 disabled:opacity-60" aria-label="Delete">
+          <Trash2 size={14} aria-hidden /> {deleting ? 'Deleting…' : 'Delete'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Shown at the top of the editor right after something was created: the new link, ready to copy,
+ * so it never has to be hunted for. A draft says plainly that the link works after publishing.
+ */
+export function JustCreated({ what, path, published, onPublish, publishing }: { what: 'event' | 'program'; path: string; published: boolean; onPublish?: () => void; publishing?: boolean }) {
+  const location = useLocation();
+  const [copied, setCopied] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  if (!(location.state as { justCreated?: boolean } | null)?.justCreated || hidden) return null;
+  const url = `${window.location.origin}${path}`;
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      (document.getElementById('created-link-input') as HTMLInputElement | null)?.select();
+      document.execCommand('copy');
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <div className="mb-6 rounded-xl border border-mint bg-mint-50 p-4 sm:p-5" role="status">
+      <p className="font-semibold text-heading">Your {what} is created.</p>
+      <p className="mt-1 text-sm text-ink">{published ? 'It is live. Share this link with anyone:' : 'It is saved as a draft. Publish it so this link works for everyone:'}</p>
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+        <input id="created-link-input" readOnly value={url} onFocus={(e) => e.currentTarget.select()} aria-label="Link to the new page" className="min-w-0 flex-1 rounded-lg border border-line-strong bg-white px-3 py-2 text-sm" />
+        <button type="button" onClick={copy} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700">
+          {copied ? <Check size={16} aria-hidden /> : <Copy size={16} aria-hidden />}{copied ? 'Copied' : 'Copy link'}
+        </button>
+        {published ? (
+          <a href={path} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full border border-line-strong bg-white px-4 text-sm font-semibold text-heading no-underline hover:border-blue-600">Open page <ExternalLink size={14} aria-hidden /></a>
+        ) : onPublish ? (
+          <button type="button" onClick={onPublish} disabled={publishing} className="inline-flex min-h-10 items-center justify-center rounded-full border border-blue-600 bg-white px-4 text-sm font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-60">{publishing ? 'Publishing…' : 'Publish now'}</button>
+        ) : null}
+        <button type="button" onClick={() => setHidden(true)} className="min-h-10 px-2 text-sm font-semibold text-ink-muted">Dismiss</button>
+      </div>
+    </div>
+  );
+}
+
+/** Tells the editor, in one sentence, how people will be able to pay for the price they typed. */
+export function PaymentNote({ hasPrice, currency, registrationOpen }: { hasPrice: boolean; currency: string; registrationOpen: boolean }) {
+  const { site } = useSite();
+  if (!hasPrice) return null;
+  const mode = site.integrations?.payments;
+  const providers = site.integrations?.paymentProviders ?? [];
+  const momo = providers.includes('fapshi') && asCurrency(currency) === 'XAF';
+  const card = providers.includes('flutterwave') || providers.includes('mock') || (providers.includes('notchpay') && asCurrency(currency) === 'XAF');
+  const how = mode === 'disabled' || providers.length === 0
+    ? 'Online payment is not switched on yet, so people will be told the foundation will contact them to pay.'
+    : momo && card ? 'People choose between MTN MoMo and card when they register.' : momo ? 'People pay with MTN MoMo when they register.' : card ? 'People pay by card when they register.' : 'MTN MoMo only works for prices in FCFA. Choose FCFA, or switch on card payment.';
+  return (
+    <div className="space-y-3">
+      <Alert tone="info">{how}</Alert>
+      {!registrationOpen && <Alert tone="warning">People cannot register or pay until you tick “Registration open”.</Alert>}
     </div>
   );
 }

@@ -10,6 +10,8 @@ import { requireRole, requireVerifiedEmail } from '../middleware/auth.js';
 import { getPaymentProvider, getProviderByName } from '../services/payments/index.js';
 import { MockPaymentProvider } from '../services/payments/mock.js';
 import { siteUrl } from '../lib/siteUrl.js';
+import { safeCurrency } from '../lib/currency.js';
+import { NOTCHPAY_CURRENCIES } from '../services/payments/notchpay.js';
 import { accessState, grantAccess } from '../services/access.js';
 import type { VerifiedWebhookEvent } from '../services/payments/types.js';
 
@@ -21,7 +23,7 @@ paymentsRouter.post(
   requireRole('PARENT', 'YOUTH', 'MEMBER'),
   requireVerifiedEmail,
   h(async (req, res) => {
-    const body = parse(z.object({ registrationId: z.string().max(40), idempotencyKey: z.string().min(8).max(80), provider: z.enum(['fapshi', 'flutterwave', 'mock']).optional() }), req.body);
+    const body = parse(z.object({ registrationId: z.string().max(40), idempotencyKey: z.string().min(8).max(80), provider: z.enum(['fapshi', 'flutterwave', 'notchpay', 'mock']).optional() }), req.body);
     // The payer can choose how to pay (mobile money or card) when more than one way is switched on.
     const provider = getPaymentProvider(body.provider);
     if (!provider) throw new ApiError(503, 'payments_disabled', body.provider ? 'That way of paying is not available.' : 'Online payment is not available yet. The foundation will contact you about payment.');
@@ -33,37 +35,50 @@ paymentsRouter.post(
     if (reg.status === 'CANCELLED' || reg.paymentStatus !== 'PENDING') throw badRequest('This registration does not need payment.');
     const item = reg.event ?? reg.program!;
     if (!item.priceCents) throw badRequest('This registration does not have an approved price.');
-    const currency = item.currency || 'XAF';
+    const currency = safeCurrency(item.currency);
+    if (provider.name === 'fapshi' && currency !== 'XAF') throw badRequest('MTN MoMo is only for prices in FCFA. Please pay by card instead.');
+    if (provider.name === 'notchpay' && !NOTCHPAY_CURRENCIES.includes(currency)) throw badRequest('This way of paying is not available for this price.');
 
-    // Idempotency: the same key from the same user returns the same payment.
+    // Idempotency: the same key from the same user returns the same payment while its payment page is
+    // still usable. A finished, failed or never started attempt (and an old payment page) is not reused,
+    // so a payer who tries again always gets a fresh, working checkout.
     const existing = await prisma.payment.findUnique({ where: { idempotencyKey: body.idempotencyKey } });
-    if (existing) {
-      if (existing.registrationId !== reg.id) throw new ApiError(409, 'conflict', 'Idempotency key already used.');
-      return send(res, { paymentId: existing.id, redirectUrl: existing.checkoutUrl ?? `${siteUrl(req)}/payments/simulated/${existing.id}`, simulation: existing.isSimulation });
+    if (existing && existing.registrationId !== reg.id) throw new ApiError(409, 'conflict', 'Idempotency key already used.');
+    const fresh = existing && existing.status === 'PENDING' && existing.checkoutUrl && Date.now() - existing.createdAt.getTime() < 20 * 60_000;
+    if (existing && fresh) {
+      return send(res, { paymentId: existing.id, redirectUrl: existing.checkoutUrl!, simulation: existing.isSimulation });
     }
+    if (existing && existing.status === 'PENDING') await prisma.payment.update({ where: { id: existing.id }, data: { status: 'CANCELLED' } });
     const payment = await prisma.payment.create({
       data: {
         purpose: 'REGISTRATION',
         registrationId: reg.id,
         provider: provider.name,
-        idempotencyKey: body.idempotencyKey,
+        idempotencyKey: existing ? `${body.idempotencyKey}:${Date.now().toString(36)}` : body.idempotencyKey,
         amountCents: item.priceCents,
         currency,
         payerEmail: req.auth!.user.email,
         isSimulation: provider.isSimulation,
       },
     });
-    const session = await provider.createCheckout({
-      paymentId: payment.id,
-      amountCents: payment.amountCents,
-      currency: payment.currency,
-      description: item.title,
-      payerEmail: payment.payerEmail,
-      payerName: req.auth!.user.displayName,
-      idempotencyKey: payment.idempotencyKey,
-      returnBaseUrl: siteUrl(req),
-      payerId: req.auth!.user.id,
-    });
+    let session: Awaited<ReturnType<typeof provider.createCheckout>>;
+    try {
+      session = await provider.createCheckout({
+        paymentId: payment.id,
+        amountCents: payment.amountCents,
+        currency: payment.currency,
+        description: item.title,
+        payerEmail: payment.payerEmail,
+        payerName: req.auth!.user.displayName,
+        idempotencyKey: payment.idempotencyKey,
+        returnBaseUrl: siteUrl(req),
+        payerId: req.auth!.user.id,
+      });
+    } catch (e) {
+      // The provider refused to start it. Do not leave a "pending" payment behind that can never be paid.
+      await prisma.payment.update({ where: { id: payment.id }, data: { status: 'FAILED' } }).catch(() => undefined);
+      throw e;
+    }
     await prisma.payment.update({ where: { id: payment.id }, data: { providerRef: session.providerRef, checkoutUrl: session.redirectUrl } });
     send(res, { paymentId: payment.id, redirectUrl: session.redirectUrl, simulation: provider.isSimulation }, 201);
   }),
@@ -79,7 +94,7 @@ paymentsRouter.post(
   h(async (req, res) => {
     const user = req.auth!.user;
     const state = accessState(user);
-    const choice = parse(z.object({ provider: z.enum(['fapshi', 'flutterwave', 'mock']).optional() }), req.body).provider;
+    const choice = parse(z.object({ provider: z.enum(['fapshi', 'flutterwave', 'notchpay', 'mock']).optional() }), req.body).provider;
     const provider = getPaymentProvider(choice);
     if (!provider || !state.required) throw new ApiError(503, 'payments_disabled', choice ? 'That way of paying is not available.' : 'There is no fee to pay right now.');
     if (state.lifetime) throw badRequest('Your access has no end date, so there is nothing to pay.');
@@ -110,17 +125,23 @@ paymentsRouter.post(
         isSimulation: provider.isSimulation,
       },
     });
-    const session = await provider.createCheckout({
-      paymentId: payment.id,
-      amountCents: payment.amountCents,
-      currency: payment.currency,
-      description: 'Lead Vest Foundation access',
-      payerEmail: payment.payerEmail,
-      payerName: user.displayName,
-      idempotencyKey: payment.idempotencyKey,
-      returnBaseUrl: siteUrl(req),
-      payerId: user.id,
-    });
+    let session: Awaited<ReturnType<typeof provider.createCheckout>>;
+    try {
+      session = await provider.createCheckout({
+        paymentId: payment.id,
+        amountCents: payment.amountCents,
+        currency: payment.currency,
+        description: 'Lead Vest Foundation access',
+        payerEmail: payment.payerEmail,
+        payerName: user.displayName,
+        idempotencyKey: payment.idempotencyKey,
+        returnBaseUrl: siteUrl(req),
+        payerId: user.id,
+      });
+    } catch (e) {
+      await prisma.payment.update({ where: { id: payment.id }, data: { status: 'FAILED' } }).catch(() => undefined);
+      throw e;
+    }
     await prisma.payment.update({ where: { id: payment.id }, data: { providerRef: session.providerRef, checkoutUrl: session.redirectUrl } });
     send(res, { paymentId: payment.id, redirectUrl: session.redirectUrl, simulation: provider.isSimulation }, 201);
   }),

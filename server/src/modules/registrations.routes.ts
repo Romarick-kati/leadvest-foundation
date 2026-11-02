@@ -46,7 +46,9 @@ registrationsRouter.post(
           const event = await tx.event.findFirst({ where: { id: body.eventId, status: 'PUBLISHED' } });
           if (!event) throw notFound('Event not found.');
           if (!event.registrationOpen || event.eventStatus !== 'SCHEDULED') throw badRequest('Registration is not open for this event.');
-          if (event.registrationDeadline && event.registrationDeadline < new Date()) throw badRequest('The registration deadline has passed.');
+          // Registration stays open until the deadline when there is one, otherwise until the event is over.
+          const closesAt = event.registrationDeadline ?? event.endsAt ?? new Date(event.startsAt.getTime() + 3 * 3_600_000);
+          if (closesAt < new Date()) throw badRequest(event.registrationDeadline ? 'The registration deadline has passed.' : 'This event has already finished.');
           if (event.externalUrl) throw badRequest('This event uses an external registration page.');
           const dup = await tx.registration.findFirst({
             where: { eventId: event.id, registrantId: user.id, learnerId: body.learnerId ?? null, status: { not: 'CANCELLED' } },
@@ -110,8 +112,8 @@ registrationsRouter.get(
       where: { registrantId: req.auth!.user.id },
       orderBy: { createdAt: 'desc' },
       include: {
-        event: { select: { title: true, slug: true, startsAt: true } },
-        program: { select: { title: true, slug: true } },
+        event: { select: { title: true, slug: true, startsAt: true, priceCents: true, currency: true } },
+        program: { select: { title: true, slug: true, priceCents: true, currency: true } },
         learner: { select: { id: true, displayName: true } },
       },
     });

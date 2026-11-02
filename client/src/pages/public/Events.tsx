@@ -13,7 +13,7 @@ import { cn } from '../../lib/cn';
 export default function Events() {
   useDocumentTitle('Events and activities');
   const [when, setWhen] = useState<'upcoming' | 'past'>('upcoming');
-  const q = useQuery({ queryKey: ['events', when], queryFn: () => api.get<EventSummary[]>(`/events?when=${when}`) });
+  const q = useQuery({ queryKey: ['events', when], queryFn: () => api.get<EventSummary[]>(`/events?when=${when}`), refetchInterval: 30_000 });
   return (
     <>
       <PageHeader eyebrow="Events and activities" title="Join us at an upcoming event" image="events.main">

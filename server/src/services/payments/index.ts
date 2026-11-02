@@ -2,12 +2,13 @@ import { env } from '../../config/env.js';
 import { FapshiPaymentProvider } from './fapshi.js';
 import { FlutterwavePaymentProvider } from './flutterwave.js';
 import { MockPaymentProvider } from './mock.js';
+import { NotchPayPaymentProvider } from './notchpay.js';
 import type { PaymentProvider } from './types.js';
 
 const providers: Partial<Record<string, PaymentProvider>> = {};
 
 function make(name: string): PaymentProvider | null {
-  providers[name] ??= name === 'fapshi' ? new FapshiPaymentProvider() : name === 'flutterwave' ? new FlutterwavePaymentProvider() : name === 'mock' ? new MockPaymentProvider() : undefined;
+  providers[name] ??= name === 'fapshi' ? new FapshiPaymentProvider() : name === 'flutterwave' ? new FlutterwavePaymentProvider() : name === 'notchpay' ? new NotchPayPaymentProvider() : name === 'mock' ? new MockPaymentProvider() : undefined;
   return providers[name] ?? null;
 }
 

@@ -16,7 +16,7 @@ import { googleRouter } from './modules/google.routes.js';
 import { accountRouter } from './modules/account.routes.js';
 import { guardianRouter } from './modules/guardian.routes.js';
 import { publicRouter } from './modules/public.routes.js';
-import { seoRouter } from './modules/seo.routes.js';
+import { pageNotFound, seoRouter } from './modules/seo.routes.js';
 import { learningRouter } from './modules/learning.routes.js';
 import { enquiriesRouter } from './modules/enquiries.routes.js';
 import { registrationsRouter } from './modules/registrations.routes.js';
@@ -33,6 +33,13 @@ export function createApp() {
   // On Netlify the function may see its own path; map it back to the public one.
   app.use((req, _res, next) => {
     if (req.url.startsWith(FUNCTION_PREFIX)) req.url = req.url.slice(FUNCTION_PREFIX.length) || '/';
+    next();
+  });
+  // Netlify may hand a page request over under the address the visitor typed (for example
+  // /events/open-day) instead of the internal /api/render/... one. Without this, refreshing or
+  // sharing a program, event, article or lesson link showed a raw "not found" message.
+  app.use((req, _res, next) => {
+    if (req.method === 'GET' && /^\/(programs|events|resources|learning)(\/|\?|$)/.test(req.url)) req.url = `/api/render${req.url}`;
     next();
   });
   if (env.TRUST_PROXY) app.set('trust proxy', env.TRUST_PROXY);
@@ -101,6 +108,7 @@ export function createApp() {
   app.use('/api', seoRouter);
 
   app.use('/api', notFoundHandler);
+  app.use(pageNotFound);
   app.use(notFoundHandler);
   app.use(errorHandler);
   return app;

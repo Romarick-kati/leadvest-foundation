@@ -112,3 +112,8 @@ export function ErrorSummary({ errors, shownInline }: { errors: Record<string, s
     </ul>
   );
 }
+
+/** After an event or program is saved or deleted: make every list and page fetch the new version at once. */
+export function refreshPublicContent(qc: { invalidateQueries: (o: { queryKey: unknown[] }) => unknown }) {
+  for (const key of ['admin', 'events', 'event', 'programs', 'program']) qc.invalidateQueries({ queryKey: [key] });
+}
