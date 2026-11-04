@@ -5,7 +5,7 @@ import { defaultContact } from '../config/contact';
 
 export const fallbackSite: SiteSettings = {
   organization: { name: 'Lead Vest Foundation', shortName: 'LVF', tagline: null, mission: null, vision: null, values: [], approach: null, registrationDetails: null, country: null, founderName: 'Neville Ebai', founderTitle: 'Founder' },
-  contact: { email: null, phone: null, address: null, officeHours: null, social: [], whatsapp: null, whatsappMessage: null },
+  contact: { email: null, phone: null, address: null, officeHours: null, social: [], whatsapp: null, whatsappMessage: null, whatsappGreeting: null, whatsappAway: null, whatsappAwayNow: false, whatsappHours: { enabled: false, days: [1, 2, 3, 4, 5], from: '08:00', to: '17:00' } },
   branding: { logoUrl: null, logoMarkUrl: null, logoAlt: 'Lead Vest Foundation' },
   features: { learnerAccounts: true, eventRegistration: true, programRegistration: true },
   donations: { enabled: false, message: null, currency: null },
@@ -36,6 +36,11 @@ export function useSite() {
       whatsapp: c.whatsapp ?? defaultContact.whatsapp,
       whatsappMessage: c.whatsappMessage ?? defaultContact.whatsappMessage,
       social: c.social.length ? c.social : defaultContact.social,
+      // Older saved settings have none of the chat fields yet.
+      whatsappGreeting: c.whatsappGreeting ?? null,
+      whatsappAway: c.whatsappAway ?? null,
+      whatsappAwayNow: c.whatsappAwayNow ?? false,
+      whatsappHours: c.whatsappHours ?? fallbackSite.contact.whatsappHours,
     },
   };
   return { site, loading: q.isLoading, error: q.error };

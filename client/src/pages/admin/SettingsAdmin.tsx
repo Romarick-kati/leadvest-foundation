@@ -4,7 +4,7 @@ import { Plus, Trash2 } from '../../components/ui/icons';
 import { api, ApiError } from '../../lib/api';
 import type { SiteSettings } from '../../lib/types';
 import { useUnsavedChanges } from '../../lib/useUnsavedChanges';
-import { Alert, Badge, Button, FormError, PageLoader, Panel, TextArea, TextField, Toggle, useToast } from '../../components/ui';
+import { Alert, Badge, Button, Checkbox, FormError, PageLoader, Panel, TextArea, TextField, Toggle, useToast } from '../../components/ui';
 import { AdminPage } from './shared';
 import { missingLegalFacts } from '../../lib/policyText';
 
@@ -84,7 +84,36 @@ export default function SettingsAdmin() {
               <TextField label="Address" optional value={site.contact.address ?? ''} onChange={(e) => set('contact', { address: nullable(e.target.value) })} />
               <TextField label="Office hours" optional value={site.contact.officeHours ?? ''} onChange={(e) => set('contact', { officeHours: nullable(e.target.value) })} />
               <TextField label="WhatsApp number" optional inputMode="numeric" hint="Digits only, starting with the country code, with no plus sign, spaces or leading zeros. The chat button appears once this is set." value={site.contact.whatsapp ?? ''} onChange={(e) => set('contact', { whatsapp: nullable(e.target.value.replace(/\D/g, '')) })} />
-              <TextField label="WhatsApp greeting" optional hint="Prefilled message when someone opens the chat." value={site.contact.whatsappMessage ?? ''} onChange={(e) => set('contact', { whatsappMessage: nullable(e.target.value) })} />
+              <TextField label="WhatsApp starting message" optional hint="Sent for the visitor when they open WhatsApp without typing anything." value={site.contact.whatsappMessage ?? ''} onChange={(e) => set('contact', { whatsappMessage: nullable(e.target.value) })} />
+            </div>
+            <div className="mt-6 rounded-xl border border-line p-4">
+              <h3 className="text-h4">WhatsApp chat on the website</h3>
+              <p className="mb-4 mt-1 text-sm text-ink-muted">Visitors write their message in a chat window and it opens in WhatsApp. When nobody is available, they see your automatic message.</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <TextField label="Greeting" optional hint="Leave empty to use: Hi! How can we help you today?" value={site.contact.whatsappGreeting ?? ''} onChange={(e) => set('contact', { whatsappGreeting: nullable(e.target.value) })} />
+                <TextField label="Away message" optional hint="Leave empty to use: we are not available right now, but we will get back to you as soon as we can." value={site.contact.whatsappAway ?? ''} onChange={(e) => set('contact', { whatsappAway: nullable(e.target.value) })} />
+              </div>
+              <div className="mt-4 space-y-4">
+                <Checkbox label="I am away right now" hint="Shows the away message straight away, whatever the hours say. Switch it off when you are back." checked={site.contact.whatsappAwayNow} onChange={(e) => set('contact', { whatsappAwayNow: e.target.checked })} />
+                <Checkbox label="Only show me as available during set hours" hint="Outside these hours (Cameroon time) visitors see the away message." checked={site.contact.whatsappHours.enabled} onChange={(e) => set('contact', { whatsappHours: { ...site.contact.whatsappHours, enabled: e.target.checked } })} />
+                {site.contact.whatsappHours.enabled && (
+                  <div className="space-y-3 pl-1">
+                    <div role="group" aria-label="Days available" className="flex flex-wrap gap-2">
+                      {[[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [0, 'Sun']].map(([d, label]) => {
+                        const on = site.contact.whatsappHours.days.includes(d as number);
+                        return (
+                          <button key={d} type="button" aria-pressed={on} onClick={() => set('contact', { whatsappHours: { ...site.contact.whatsappHours, days: on ? site.contact.whatsappHours.days.filter((x) => x !== d) : [...site.contact.whatsappHours.days, d as number] } })} className={`min-h-10 rounded-full border-2 px-4 text-sm font-semibold transition ${on ? 'border-blue-600 bg-blue-50 text-blue-800' : 'border-line-strong text-ink-muted'}`}>{label}</button>
+                        );
+                      })}
+                    </div>
+                    <div className="grid max-w-sm gap-4 sm:grid-cols-2">
+                      <TextField label="From" type="time" value={site.contact.whatsappHours.from} onChange={(e) => set('contact', { whatsappHours: { ...site.contact.whatsappHours, from: e.target.value || '08:00' } })} />
+                      <TextField label="Until" type="time" value={site.contact.whatsappHours.to} onChange={(e) => set('contact', { whatsappHours: { ...site.contact.whatsappHours, to: e.target.value || '17:00' } })} />
+                    </div>
+                  </div>
+                )}
+              </div>
+              <p className="mt-4 rounded-lg bg-blue-50 p-3 text-sm text-ink-muted">To also reply automatically inside WhatsApp itself, open the WhatsApp Business app, then Settings, Business tools, Away message. That one is set on the phone, not on this website.</p>
             </div>
             <div className="mt-6">
               <div className="mb-2 flex items-center justify-between"><h3 className="text-h4">Verified social links</h3><Button size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => set('contact', { social: [...site.contact.social, { label: '', url: 'https://' }] })}>Add link</Button></div>

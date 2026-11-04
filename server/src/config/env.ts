@@ -42,7 +42,7 @@ const schema = z.object({
   SMTP_SECURE: bool(false),
 
   // Payments are off until the foundation approves a provider and configuration.
-  // fapshi = MTN mobile money in Cameroon. flutterwave / notchpay = cards (and more). both = fapshi + flutterwave.
+  // fapshi = MTN MoMo and Orange Money in Cameroon. flutterwave / notchpay = cards (and more). both = fapshi + flutterwave.
   // fapshi+notchpay = MTN MoMo and Notch Pay cards. all = all three.
   PAYMENTS_MODE: z.enum(['disabled', 'mock', 'fapshi', 'flutterwave', 'notchpay', 'both', 'fapshi+notchpay', 'all']).default('disabled'),
   PAYMENT_WEBHOOK_SECRET: z.string().optional(),

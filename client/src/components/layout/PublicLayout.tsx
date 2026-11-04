@@ -6,7 +6,7 @@ import { Footer } from './Footer';
 import { BackBar } from './BackBar';
 import { PageLoader } from '../ui';
 import { ServiceNotice } from './ServiceNotice';
-import { WhatsAppButton } from './WhatsAppButton';
+import { WhatsAppChat } from './WhatsAppChat';
 import { CookieConsent } from '../privacy/consent';
 import { BackToTop, ScrollProgress } from '../motion/PageExtras';
 import { PaywallGate } from './Guards';
@@ -104,7 +104,7 @@ export function PublicLayout() {
         </Suspense>
       </main>
       <Footer />
-      <WhatsAppButton />
+      <WhatsAppChat />
       <BackToTop />
       <CookieConsent />
       <ScrollRestoration />

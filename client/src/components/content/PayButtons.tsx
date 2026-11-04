@@ -4,12 +4,12 @@ import { useSite } from '../../lib/site';
 import { useT } from '../../i18n';
 import { asCurrency } from '../../lib/format';
 import { FormError, Spinner } from '../ui';
-import { CardIcon, MastercardMark, MomoIcon, VisaMark } from './PayIcons';
+import { CardIcon, MastercardMark, MobileMoneyIcons, MobileMoneyMarks, VisaMark } from './PayIcons';
 
 /**
  * Lets the payer choose how to pay and opens the secure payment page. The price is not repeated on
  * the buttons: it is shown on the page itself, so a forgotten or changed price can never disagree
- * with a button. MTN MoMo (Fapshi) handles FCFA only; card payment (Flutterwave) works from any
+ * with a button. Mobile Money (Fapshi: MTN MoMo and Orange Money) handles FCFA only; card payment (Flutterwave) works from any
  * country, so a price in dollars or euros is offered by card only.
  */
 export function PayButtons({ registrationId, currency }: { registrationId: string; currency?: string | null }) {
@@ -42,11 +42,12 @@ export function PayButtons({ registrationId, currency }: { registrationId: strin
           return (
             <li key={p}>
               <button type="button" disabled={checkout.isPending} onClick={() => checkout.mutate(p)} className="flex w-full items-center gap-4 rounded-2xl border-2 border-line-strong bg-surface p-4 text-left transition hover:border-blue-600 hover:shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:opacity-60">
-                {isCard(p) ? <CardIcon className="h-12 w-12 shrink-0" /> : <MomoIcon className="h-12 w-12 shrink-0" />}
+                {isCard(p) ? <CardIcon className="h-12 w-12 shrink-0" /> : p === 'mock' ? <CardIcon className="h-12 w-12 shrink-0" /> : <MobileMoneyIcons className="h-12 w-12 shrink-0" />}
                 <span className="min-w-0 flex-1">
                   <span className="block text-base font-bold text-heading">{label(p)}</span>
                   <span className="block text-sm text-ink-muted">{busy ? 'Opening the secure payment page…' : hint(p)}</span>
                   {isCard(p) && !busy && <span className="mt-1.5 flex items-center gap-2" aria-hidden><VisaMark /><MastercardMark /></span>}
+                  {p === 'fapshi' && !busy && <span className="mt-1.5 block"><MobileMoneyMarks /></span>}
                 </span>
                 <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-blue-700">{busy ? <Spinner size={16} /> : 'Pay'}</span>
               </button>

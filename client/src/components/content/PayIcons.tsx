@@ -36,3 +36,33 @@ export function MastercardMark({ className = 'h-5 w-auto' }: { className?: strin
     </svg>
   );
 }
+
+export function OrangeMoneyIcon({ className = 'h-12 w-12' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 56 56" className={className} role="img" aria-label="Orange Money" focusable="false">
+      <rect width="56" height="56" rx="14" fill="#FF7900" />
+      <text x="28" y="24" textAnchor="middle" fontSize="12" fontWeight="800" fill="#fff" fontFamily="Arial, Helvetica, sans-serif">Orange</text>
+      <text x="28" y="41" textAnchor="middle" fontSize="14" fontWeight="800" fill="#fff" fontFamily="Arial, Helvetica, sans-serif">Money</text>
+    </svg>
+  );
+}
+
+/** Both mobile money logos together, so nobody thinks only one network is accepted. */
+export function MobileMoneyIcons({ className = 'h-12 w-12' }: { className?: string }) {
+  return (
+    <span className={`relative inline-block shrink-0 ${className}`} aria-hidden>
+      <MomoIcon className="absolute left-0 top-0 h-9 w-9 shadow-soft" />
+      <OrangeMoneyIcon className="absolute bottom-0 right-0 h-9 w-9 rounded-[10px] ring-2 ring-surface" />
+    </span>
+  );
+}
+
+/** Small side by side marks used under a button label. */
+export function MobileMoneyMarks() {
+  return (
+    <span className="flex items-center gap-2" aria-hidden>
+      <MomoIcon className="h-6 w-6" />
+      <OrangeMoneyIcon className="h-6 w-6" />
+    </span>
+  );
+}

@@ -135,7 +135,7 @@ export function PaymentNote({ hasPrice, currency, registrationOpen }: { hasPrice
   const card = providers.includes('flutterwave') || providers.includes('mock') || (providers.includes('notchpay') && asCurrency(currency) === 'XAF');
   const how = mode === 'disabled' || providers.length === 0
     ? 'Online payment is not switched on yet, so people will be told the foundation will contact them to pay.'
-    : momo && card ? 'People choose between MTN MoMo and card when they register.' : momo ? 'People pay with MTN MoMo when they register.' : card ? 'People pay by card when they register.' : 'MTN MoMo only works for prices in FCFA. Choose FCFA, or switch on card payment.';
+    : momo && card ? 'People choose between Mobile Money (MTN or Orange) and card when they register.' : momo ? 'People pay with Mobile Money (MTN MoMo or Orange Money) when they register.' : card ? 'People pay by card when they register.' : 'Mobile Money only works for prices in FCFA. Choose FCFA, or switch on card payment.';
   return (
     <div className="space-y-3">
       <Alert tone="info">{how}</Alert>

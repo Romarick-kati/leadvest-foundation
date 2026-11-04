@@ -10,7 +10,7 @@ describe('public content caching', () => {
       const res = await client().get(path);
       expect(res.status).toBe(200);
       expect(res.headers['cache-control']).toBe('public, max-age=0, must-revalidate');
-      expect(res.headers['netlify-cdn-cache-control']).toBe('public, max-age=5');
+      expect(res.headers['netlify-cdn-cache-control']).toBe('public, max-age=20, stale-while-revalidate=120');
     }
   });
 
@@ -49,6 +49,19 @@ describe('contact settings', () => {
     const ok = await admin.put('/api/admin/settings').send({ ...site, contact: { ...site.contact, whatsapp: '15550000000', whatsappMessage: 'Hello' } });
     expect(ok.status).toBe(200);
     expect((await client().get('/api/site')).body.data.contact.whatsapp).toBe('15550000000');
+  });
+
+  it('saves the chat window settings and refuses bad hours', async () => {
+    const { c: admin } = await adminClient();
+    const site = (await admin.get('/api/admin/settings')).body.data.site;
+    expect(site.contact.whatsappHours).toEqual({ enabled: false, days: [1, 2, 3, 4, 5], from: '08:00', to: '17:00' });
+    const bad = await admin.put('/api/admin/settings').send({ ...site, contact: { ...site.contact, whatsappHours: { enabled: true, days: [1, 9], from: '8am', to: '17:00' } } });
+    expect(bad.status).toBe(400);
+    const chat = { whatsappGreeting: 'Hello!', whatsappAway: 'We will reply tomorrow.', whatsappAwayNow: true, whatsappHours: { enabled: true, days: [1, 2, 3], from: '09:00', to: '16:30' } };
+    const ok = await admin.put('/api/admin/settings').send({ ...site, contact: { ...site.contact, ...chat } });
+    expect(ok.status).toBe(200);
+    const saved = (await client().get('/api/site')).body.data.contact;
+    expect(saved).toMatchObject(chat);
   });
 });
 

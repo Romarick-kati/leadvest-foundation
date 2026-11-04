@@ -82,6 +82,7 @@ export { Sparkles } from './icon-set/Sparkles';
 export { Sprout } from './icon-set/Sprout';
 export { Star } from './icon-set/Star';
 export { Ticket } from './icon-set/Ticket';
+export { Send } from './icon-set/Send';
 export { Trash2 } from './icon-set/Trash2';
 export { Upload } from './icon-set/Upload';
 export { User } from './icon-set/User';

@@ -61,3 +61,32 @@ export async function resizeImage(file: File, maxSide = 1600, limitBytes = 3_200
     pic.release();
   }
 }
+
+/** A picture opened once, so it can be redrawn at different sizes quickly while someone chooses. */
+export async function openPicture(file: File) {
+  const pic = await decode(file);
+  if (!pic.width || !pic.height) {
+    pic.release();
+    throw new Error(UNREADABLE);
+  }
+  return {
+    width: pic.width,
+    height: pic.height,
+    /** Draws the picture with its longest side at most `side` pixels, as a JPEG. */
+    async draw(side: number, quality = 0.8): Promise<{ blob: Blob; width: number; height: number }> {
+      const scale = Math.min(1, side / Math.max(pic.width, pic.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(pic.width * scale));
+      canvas.height = Math.max(1, Math.round(pic.height * scale));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Your browser could not prepare this picture. Please try another browser.');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(pic.source, 0, 0, canvas.width, canvas.height);
+      const blob = await toBlob(canvas, quality);
+      if (!blob) throw new Error('The picture could not be prepared. Please try a different one.');
+      return { blob, width: canvas.width, height: canvas.height };
+    },
+    release: pic.release,
+  };
+}

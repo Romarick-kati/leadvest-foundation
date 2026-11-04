@@ -228,3 +228,6 @@ Every interface and brand icon is Font Awesome Free (`@fortawesome/free-solid-sv
 - Logs redact cookies, passwords, codes and tokens. Do not add logging of request bodies.
 - Every permission check happens on the server. The interface hides things for convenience only.
 - Never commit `.env` files. `.gitignore` already excludes them.
+
+---
+Website developed and designed by Ndi Romarick Kati (web developer and designer). Founder of Lead Vest Foundation: Neville Ebai.

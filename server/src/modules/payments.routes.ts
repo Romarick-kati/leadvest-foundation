@@ -36,7 +36,7 @@ paymentsRouter.post(
     const item = reg.event ?? reg.program!;
     if (!item.priceCents) throw badRequest('This registration does not have an approved price.');
     const currency = safeCurrency(item.currency);
-    if (provider.name === 'fapshi' && currency !== 'XAF') throw badRequest('MTN MoMo is only for prices in FCFA. Please pay by card instead.');
+    if (provider.name === 'fapshi' && currency !== 'XAF') throw badRequest('Mobile Money (MTN or Orange) is only for prices in FCFA. Please pay by card instead.');
     if (provider.name === 'notchpay' && !NOTCHPAY_CURRENCIES.includes(currency)) throw badRequest('This way of paying is not available for this price.');
 
     // Idempotency: the same key from the same user returns the same payment while its payment page is

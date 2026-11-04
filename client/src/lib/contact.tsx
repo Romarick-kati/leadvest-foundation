@@ -47,6 +47,47 @@ export function whatsappLink(site: SiteSettings): string | null {
   return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
 }
 
+/** WhatsApp link with a message typed by the visitor (or the standard greeting when none is typed). */
+export function whatsappLinkWith(site: SiteSettings, message?: string): string | null {
+  const base = whatsappLink(site);
+  if (!base) return null;
+  const text = message?.trim();
+  return text ? base.replace(/\?text=.*$/, `?text=${encodeURIComponent(text.slice(0, 1000))}`) : base;
+}
+
+const FOUNDATION_TIME_ZONE = 'Africa/Douala';
+
+/** The day (0 = Sunday) and minutes since midnight in Cameroon, whatever time zone the visitor is in. */
+function foundationNow(now: Date) {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: FOUNDATION_TIME_ZONE, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  const day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(get('weekday'));
+  return { day, minutes: Number(get('hour')) * 60 + Number(get('minute')) };
+}
+
+const toMinutes = (hhmm: string) => {
+  const [h, m] = hhmm.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+};
+
+/**
+ * Whether the team can answer right now. The manual "I am away" switch always wins; with the weekly
+ * hours switched off the team counts as available. A closing time before the opening time means the
+ * hours run past midnight.
+ */
+export function isChatAvailable(contact: SiteSettings['contact'], now: Date = new Date()): boolean {
+  if (contact.whatsappAwayNow) return false;
+  const h = contact.whatsappHours;
+  if (!h?.enabled) return true;
+  const { day, minutes } = foundationNow(now);
+  const from = toMinutes(h.from);
+  const to = toMinutes(h.to);
+  if (from === to) return h.days.includes(day);
+  if (from < to) return h.days.includes(day) && minutes >= from && minutes < to;
+  const yesterday = (day + 6) % 7;
+  return (h.days.includes(day) && minutes >= from) || (h.days.includes(yesterday) && minutes < to);
+}
+
 /** True when at least one official social profile has been configured. */
 export const hasSocial = (site: SiteSettings) => socialLinks(site).length > 0;
 

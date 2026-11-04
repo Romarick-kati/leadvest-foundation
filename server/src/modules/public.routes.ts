@@ -14,7 +14,9 @@ export const publicRouter = Router();
 /**
  * Short shared caching for public content that is the same for every visitor (site settings,
  * published programs, events and pages). Browsers always check with the server; a CDN such as
- * Netlify's (through the CDN cache headers) may serve a copy for up to 5 seconds. Skipped
+ * Netlify's (through the CDN cache headers) may serve a copy for up to 20 seconds, and for a
+ * further 2 minutes while it quietly fetches a fresh one, so pages open fast without waiting for the
+ * database. An edit made in the admin shows on the public site within about 20 seconds. Skipped
  * whenever the response sets a cookie, so a session refresh can never be cached. Nothing under
  * /account, /admin, /learning or /auth uses this.
  */
@@ -23,8 +25,8 @@ publicRouter.use((req, res, next) => {
     const onlyPublic = () => {
       if (!res.getHeader('Set-Cookie') && res.statusCode === 200) {
         res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
-        res.setHeader('CDN-Cache-Control', 'public, max-age=5');
-        res.setHeader('Netlify-CDN-Cache-Control', 'public, max-age=5');
+        res.setHeader('CDN-Cache-Control', 'public, max-age=20, stale-while-revalidate=120');
+        res.setHeader('Netlify-CDN-Cache-Control', 'public, max-age=20, stale-while-revalidate=120');
       } else res.setHeader('Cache-Control', 'private, no-store');
     };
     const json = res.json.bind(res);

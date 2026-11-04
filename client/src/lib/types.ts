@@ -25,6 +25,8 @@ export interface User {
   access?: { required: boolean; active: boolean; lifetime: boolean; until: string | null; feeXaf: number; feeUsd: number | null; periodDays: number; providers: string[] };
 }
 
+export interface WhatsAppHours { enabled: boolean; days: number[]; from: string; to: string }
+
 export interface SiteSettings {
   organization: {
     name: string;
@@ -39,7 +41,7 @@ export interface SiteSettings {
     founderName: string | null;
     founderTitle: string | null;
   };
-  contact: { email: string | null; phone: string | null; address: string | null; officeHours: string | null; social: { label: string; url: string }[]; whatsapp: string | null; whatsappMessage: string | null };
+  contact: { email: string | null; phone: string | null; address: string | null; officeHours: string | null; social: { label: string; url: string }[]; whatsapp: string | null; whatsappMessage: string | null; whatsappGreeting: string | null; whatsappAway: string | null; whatsappAwayNow: boolean; whatsappHours: WhatsAppHours };
   branding: { logoUrl: string | null; logoMarkUrl: string | null; logoAlt: string };
   features: { learnerAccounts: boolean; eventRegistration: boolean; programRegistration: boolean };
   donations: { enabled: boolean; message: string | null; currency: string | null };

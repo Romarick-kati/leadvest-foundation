@@ -93,3 +93,17 @@ footer::before {
 html.reduce-motion .hero-bubble-up, html.reduce-motion .hero-rays, html.reduce-motion .ribbon-track, html.reduce-motion .ribbon-star, html.reduce-motion .section-blob, html.reduce-motion .google-btn, html.reduce-motion .google-btn::before, html.reduce-motion footer::before, html.reduce-motion .eyebrow::before { animation: none; }
 html.reduce-motion .hero-bubble-up { opacity: 0; }
 html.reduce-motion .hero-spot { display: none; }
+
+/* ---------- WhatsApp chat button: a soft pulse ring and a small wiggle every few seconds ---------- */
+@keyframes lvw-ring { 0% { transform: scale(1); opacity: 0.55; } 70%, 100% { transform: scale(1.7); opacity: 0; } }
+@keyframes lvw-wiggle { 0%, 82%, 100% { transform: rotate(0) scale(1); } 86% { transform: rotate(-12deg) scale(1.08); } 90% { transform: rotate(10deg) scale(1.08); } 94% { transform: rotate(-6deg) scale(1.04); } 97% { transform: rotate(3deg); } }
+@keyframes lvw-pop { from { opacity: 0; transform: translateY(14px) scale(0.96); } to { opacity: 1; transform: none; } }
+.lvw-ring { animation: lvw-ring 2.4s ease-out infinite; }
+.lvw-fab-idle { animation: lvw-wiggle 6s ease-in-out 3s infinite; }
+.lvw-panel, .lvw-teaser { transform-origin: bottom right; animation: lvw-pop 0.22s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  html:not(.motion-on) .lvw-ring, html:not(.motion-on) .lvw-fab-idle, html:not(.motion-on) .lvw-panel, html:not(.motion-on) .lvw-teaser { animation: none; }
+  html:not(.motion-on) .lvw-ring { display: none; }
+}
+html.reduce-motion .lvw-ring, html.reduce-motion .lvw-fab-idle, html.reduce-motion .lvw-panel, html.reduce-motion .lvw-teaser { animation: none; }
+html.reduce-motion .lvw-ring { display: none; }

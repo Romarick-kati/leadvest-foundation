@@ -1,6 +1,7 @@
 /* TEAM */
 Developer: Ndi Romarick Kati
 Role: Website design and development
+Site: https://presencescan.site/
 
 /* SITE */
 Name: Lead Vest Foundation

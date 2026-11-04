@@ -30,6 +30,18 @@ export const siteSettingsSchema = z.object({
     // Leave null until the foundation confirms the number; the chat button stays hidden until then.
     whatsapp: z.string().regex(/^\d{8,15}$/, 'Use digits only, with the country code first.').nullable(),
     whatsappMessage: z.string().max(300).nullable(),
+    // The chat window on the site. Greeting and away message are optional: empty uses the built in texts.
+    whatsappGreeting: z.string().max(200).nullable(),
+    whatsappAway: z.string().max(300).nullable(),
+    // Manual switch: show the away message now, whatever the hours say.
+    whatsappAwayNow: z.boolean(),
+    // Weekly hours in Cameroon time (days 0 = Sunday ... 6 = Saturday). Off means always available.
+    whatsappHours: z.object({
+      enabled: z.boolean(),
+      days: z.array(z.number().int().min(0).max(6)).max(7),
+      from: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use a time like 08:00.'),
+      to: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use a time like 17:00.'),
+    }),
   }),
   branding: z.object({
     // Paths or URLs to the official assets once supplied. Null uses the built in placeholder.
@@ -101,7 +113,7 @@ export const defaultSiteSettings: SiteSettings = {
     founderName: 'Neville Ebai',
     founderTitle: 'Founder',
   },
-  contact: { email: null, phone: null, address: null, officeHours: null, social: [], whatsapp: null, whatsappMessage: null },
+  contact: { email: null, phone: null, address: null, officeHours: null, social: [], whatsapp: null, whatsappMessage: null, whatsappGreeting: null, whatsappAway: null, whatsappAwayNow: false, whatsappHours: { enabled: false, days: [1, 2, 3, 4, 5], from: '08:00', to: '17:00' } },
   branding: { logoUrl: null, logoMarkUrl: null, logoAlt: 'Lead Vest Foundation' },
   features: { learnerAccounts: true, eventRegistration: true, programRegistration: true },
   donations: { enabled: false, message: null, currency: null },
