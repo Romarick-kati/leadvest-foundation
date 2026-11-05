@@ -47,3 +47,9 @@ first image on a page.
 
 The logo is a placeholder drawn for this build. Replace the files in `public/images/branding/` with the
 foundation's official logo. Illustrations are original SVGs made for this project.
+
+## Developer photo (structured data only)
+
+`developer/ndi-romarick-kati.jpg` is the web developer and designer's own photo, supplied by him
+and used only in the hidden structured data in `index.html` so search engines can show it when
+someone searches for him. It must not be shown on any page of the site.
