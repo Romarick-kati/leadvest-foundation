@@ -54,6 +54,21 @@ describe('GET /api/admin/analytics', () => {
     expect(d.usersByRole.find((r: { role: string }) => r.role === 'PARENT')?.count).toBe(1);
   });
 
+  it('shows which mentor leads which program and how many people joined, with no participant names', async () => {
+    const { c } = await adminClient();
+    const mentor = await makeUser('INSTRUCTOR', { displayName: 'Mentor Mary' });
+    const parent = await makeUser('PARENT', { displayName: 'Hidden Parent' });
+    const program = await prisma.program.create({ data: { slug: 'coding', title: 'Coding club', summary: 's', description: 'd', status: 'PUBLISHED' } });
+    await prisma.instructorAssignment.create({ data: { programId: program.id, instructorId: mentor.id } });
+    await prisma.registration.create({ data: { programId: program.id, registrantId: parent.id, status: 'CONFIRMED' } });
+    await prisma.registration.create({ data: { programId: program.id, registrantId: parent.id, status: 'PENDING' } });
+    const d = (await c.get('/api/admin/analytics?range=7')).body.data;
+    expect(d.mentors).toHaveLength(1);
+    expect(d.mentors[0]).toMatchObject({ name: 'Mentor Mary', confirmed: 1, pending: 1, total: 2 });
+    expect(d.mentors[0].programs).toEqual([{ id: program.id, title: 'Coding club', confirmed: 1, total: 2 }]);
+    expect(JSON.stringify(d)).not.toContain('Hidden Parent');
+  });
+
   it('leaves test payments out of the money totals', async () => {
     const { c } = await adminClient();
     const parent = await makeUser('PARENT');

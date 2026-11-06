@@ -20,6 +20,7 @@ interface Analytics {
   registrationsOverTime: ({ period: string } & Counts)[];
   registrationsByStatus: Counts;
   byItem: ({ id: string; kind: 'event' | 'program'; title: string } & Counts)[];
+  mentors: ({ id: string; name: string; programs: { id: string; title: string; confirmed: number; total: number }[] } & Counts)[];
   itemCount: number;
   byHour: { hour: number; count: number }[];
   byWeekday: { day: number; count: number }[];
@@ -74,6 +75,7 @@ export default function AnalyticsAdmin() {
       ['NEW ACCOUNTS OVER TIME'], ['Period', 'New accounts'], ...d.usersOverTime.map((p) => [p.period, p.count]), [],
       ['REGISTRATIONS OVER TIME'], ['Period', 'Total', 'Accepted', 'Pending', 'Waiting list', 'Refused'], ...d.registrationsOverTime.map((p) => [p.period, p.total, p.confirmed, p.pending, p.waitlisted, p.refused]), [],
       ['EVENTS AND PROGRAMS'], ['Name', 'Type', 'Total', 'Accepted', 'Pending', 'Waiting list', 'Refused'], ...d.byItem.map((i) => [i.title, i.kind === 'event' ? 'Event' : 'Program', i.total, i.confirmed, i.pending, i.waitlisted, i.refused]), [],
+      ['MENTORS AND INSTRUCTORS'], ['Mentor or instructor', 'Program', 'Accepted', 'Total requests'], ...d.mentors.flatMap((m) => m.programs.map((p) => [m.name, p.title, p.confirmed, p.total])), [],
       ['WHEN PEOPLE APPLY (Cameroon time)'], ['Hour', 'Registrations'], ...d.byHour.map((h) => [hourLabel(h.hour), h.count]), [], ['Day', 'Registrations'], ...d.byWeekday.map((w) => [weekdayName(w.day), w.count]), [],
       ['MONEY RECEIVED (real payments only)'], ['Currency', 'Amount', 'Payments'], ...d.revenue.byCurrency.map((c) => [c.currency, c.amountCents / 100, c.count]),
     ]);
@@ -123,6 +125,12 @@ export default function AnalyticsAdmin() {
             <div className="mb-4"><Legend items={STATUS.map((s) => ({ label: s.label, color: s.color }))} /></div>
             <NamedBars series={STATUS} empty="Nobody has registered in this period yet." rows={d.byItem.map((i) => ({ id: `${i.kind}-${i.id}`, label: i.title, sublabel: i.kind === 'event' ? 'Event' : 'Program', values: { confirmed: i.confirmed, pending: i.pending, waitlisted: i.waitlisted, refused: i.refused } }))} />
             <p className="mt-4 text-sm text-ink-muted">Need the names of the people? Open <Link to="/admin/reports">Reports</Link> for the registrations list with names and contact details.</p>
+          </Panel>
+
+          <Panel title="Mentors and instructors" description="Who leads which program, and how many people are in their programs (all time)." actions={<CsvButton onClick={() => downloadCsv(`mentors-${stamp}.csv`, [['Mentor or instructor', 'Program', 'Accepted', 'Total requests'], ...d.mentors.flatMap((m) => m.programs.map((p) => [m.name, p.title, p.confirmed, p.total]))])} />}>
+            <div className="mb-4"><Legend items={STATUS.map((s) => ({ label: s.label, color: s.color }))} /></div>
+            <NamedBars series={STATUS} empty="No mentor or instructor has been given a program yet. Assign one under Instructors." rows={d.mentors.map((m) => ({ id: m.id, label: m.name, sublabel: m.programs.map((p) => p.title).join(', '), values: { confirmed: m.confirmed, pending: m.pending, waitlisted: m.waitlisted, refused: m.refused } }))} />
+            <p className="mt-4 text-sm text-ink-muted">A program shared by two mentors is counted for each of them. Assign mentors under <Link to="/admin/instructors">Instructors</Link>.</p>
           </Panel>
 
           <div className="grid gap-6 xl:grid-cols-2">

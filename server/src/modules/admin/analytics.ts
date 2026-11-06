@@ -137,6 +137,34 @@ adminAnalyticsRouter.get(
       if (bucket) bucket[p.currency] = (bucket[p.currency] ?? 0) + p.amountCents;
     }
 
+    // Who leads which program, and how many people each program has (all time, so a mentor's full
+    // group is shown). Mentors are staff, so their names are shown; participants are only counted.
+    const assignments = (await prisma.instructorAssignment.findMany({
+      where: { instructor: { status: 'ACTIVE' } },
+      select: { instructorId: true, programId: true, instructor: { select: { displayName: true } }, program: { select: { title: true } } },
+      take: 5000,
+    })) as unknown as { instructorId: string; programId: string; instructor: { displayName: string }; program: { title: string } }[];
+    const programIds = [...new Set(assignments.map((a) => a.programId))];
+    const perProgram = new Map<string, ReturnType<typeof blank>>();
+    if (programIds.length) {
+      const groups = (await prisma.registration.groupBy({ by: ['programId', 'status'], where: { programId: { in: programIds } }, _count: true })) as unknown as { programId: string | null; status: string; _count: number }[];
+      for (const g of groups) {
+        if (!g.programId) continue;
+        const c = perProgram.get(g.programId) ?? blank();
+        c.total += g._count; c[statusKey(g.status)] += g._count;
+        perProgram.set(g.programId, c);
+      }
+    }
+    const mentorMap = new Map<string, { id: string; name: string; programs: { id: string; title: string; confirmed: number; total: number }[] } & ReturnType<typeof blank>>();
+    for (const a of assignments) {
+      const m = mentorMap.get(a.instructorId) ?? { id: a.instructorId, name: a.instructor.displayName, programs: [], ...blank() };
+      const c = perProgram.get(a.programId) ?? blank();
+      m.programs.push({ id: a.programId, title: a.program.title, confirmed: c.confirmed, total: c.total });
+      m.total += c.total; m.confirmed += c.confirmed; m.pending += c.pending; m.waitlisted += c.waitlisted; m.refused += c.refused;
+      mentorMap.set(a.instructorId, m);
+    }
+    const mentors = [...mentorMap.values()].sort((a, b) => b.confirmed - a.confirmed || a.name.localeCompare(b.name));
+
     const itemList = [...items.values()].sort((a, b) => b.total - a.total || a.title.localeCompare(b.title));
 
     send(res, {
@@ -158,6 +186,7 @@ adminAnalyticsRouter.get(
       registrationsOverTime: keys.map((period) => ({ period, ...(regOver.get(period) ?? blank()) })),
       registrationsByStatus: statuses,
       byItem: itemList.slice(0, 15),
+      mentors,
       itemCount: itemList.length,
       byHour: byHour.map((count, hour) => ({ hour, count })),
       byWeekday: byWeekday.map((count, day) => ({ day, count })),
