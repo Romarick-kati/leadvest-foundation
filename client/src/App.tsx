@@ -149,6 +149,7 @@ const router = createBrowserRouter([
       { path: 'guardians', element: page(() => import('./pages/admin/GuardiansAdmin')) },
       { path: 'payments', element: page(() => import('./pages/admin/PaymentsAdmin')) },
       { path: 'media', element: page(() => import('./pages/admin/MediaAdmin')) },
+      { path: 'analytics', element: page(() => import('./pages/admin/AnalyticsAdmin')) },
       { path: 'reports', element: page(() => import('./pages/admin/ReportsAdmin')) },
       { path: 'privacy', element: page(() => import('./pages/admin/DataRequestsAdmin')) },
       { path: 'settings', element: page(() => import('./pages/admin/SettingsAdmin')) },

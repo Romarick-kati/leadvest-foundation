@@ -313,6 +313,7 @@ const en = {
     guardians: 'Guardian checks',
     payments: 'Payments',
     reports: 'Reports',
+    analytics: 'Analytics',
     privacyRequests: 'Privacy requests',
     audit: 'Audit log',
     settings: 'Settings',

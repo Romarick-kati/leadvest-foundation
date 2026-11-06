@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, m } from 'framer-motion';
 import {
-  BarChart3, Bell, BookOpen, CalendarDays, ClipboardList, CreditCard, FileText, GraduationCap, Home, Image, Inbox, LayoutDashboard, LogOut, Menu, Newspaper, ScrollText, Settings, ShieldCheck, UserCheck, Users, X, Lock,
+  BarChart3, LineChart, Bell, BookOpen, CalendarDays, ClipboardList, CreditCard, FileText, GraduationCap, Home, Image, Inbox, LayoutDashboard, LogOut, Menu, Newspaper, ScrollText, Settings, ShieldCheck, UserCheck, Users, X, Lock,
 } from '../../components/ui/icons';
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
@@ -16,7 +16,7 @@ import { NotificationBell } from '../../components/layout/NotificationBell';
 import { useT } from '../../i18n';
 
 const groups = [
-  { title: '', items: [{ to: '/admin', label: 'admin.overview', icon: LayoutDashboard, end: true }] },
+  { title: '', items: [{ to: '/admin', label: 'admin.overview', icon: LayoutDashboard, end: true }, { to: '/admin/analytics', label: 'admin.analytics', icon: LineChart }] },
   { title: 'admin.content', items: [
     { to: '/admin/programs', label: 'admin.programs', icon: GraduationCap },
     { to: '/admin/events', label: 'admin.events', icon: CalendarDays },

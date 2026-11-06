@@ -309,6 +309,7 @@ const es: Dict = {
     guardians: 'Verificación de tutores',
     payments: 'Pagos',
     reports: 'Informes',
+    analytics: 'Estadísticas',
     privacyRequests: 'Solicitudes de privacidad',
     audit: 'Registro de auditoría',
     settings: 'Ajustes',

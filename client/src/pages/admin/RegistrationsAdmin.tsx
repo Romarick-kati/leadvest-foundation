@@ -23,9 +23,11 @@ export default function RegistrationsAdmin() {
   const toast = useToast();
   const [status, setStatus] = useState('');
   const [eventId, setEventId] = useState('');
+  const [programId, setProgramId] = useState('');
   const [page, setPage] = useState(1);
   const events = useQuery({ queryKey: ['admin', 'events', 'filter'], queryFn: () => api.get<Page<{ id: string; title: string }>>('/admin/events?pageSize=100') });
-  const list = useQuery({ queryKey: ['admin', 'registrations', status, eventId, page], queryFn: () => api.get<List>(`/admin/registrations${qs({ status, eventId, page })}`) });
+  const programs = useQuery({ queryKey: ['admin', 'programs', 'filter'], queryFn: () => api.get<Page<{ id: string; title: string }>>('/admin/programs?pageSize=100') });
+  const list = useQuery({ queryKey: ['admin', 'registrations', status, eventId, programId, page], queryFn: () => api.get<List>(`/admin/registrations${qs({ status, eventId, programId, page })}`) });
   const update = useMutation({
     mutationFn: ({ id, status: s }: { id: string; status: string }) => api.patch(`/admin/registrations/${id}`, { status: s }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'registrations'] }); toast('Saved. The person has been told by email if email is connected.'); },
@@ -47,6 +49,7 @@ export default function RegistrationsAdmin() {
       <TableCard toolbar={<div className="flex flex-wrap gap-2">
         <FilterSelect label="Status" value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={statuses} />
         <FilterSelect label="Event" value={eventId} onChange={(v) => { setEventId(v); setPage(1); }} options={(events.data?.items ?? []).map((e) => ({ value: e.id, label: e.title }))} />
+        <FilterSelect label="Program" value={programId} onChange={(v) => { setProgramId(v); setPage(1); }} options={(programs.data?.items ?? []).map((p) => ({ value: p.id, label: p.title }))} />
       </div>}>
         {list.isLoading ? <TableSkeleton /> : list.data && list.data.items.length > 0 ? (
           <>
@@ -54,13 +57,37 @@ export default function RegistrationsAdmin() {
               caption="Registrations"
               rows={list.data.items}
               rowKey={(r) => r.id}
+              stackBelow="xl"
+              renderCard={(r) => {
+                const item = r.event ?? r.program;
+                const price = item?.priceCents ? formatMoney(item.priceCents, item.currency ?? 'XAF') : 'Free';
+                return (
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="break-words text-base font-bold text-heading">{r.event?.title ?? r.program?.title}</p>
+                        <p className="text-caption text-ink-muted">{r.event ? 'Event' : 'Program'} · {price} · {formatDateTime(r.createdAt)}</p>
+                      </div>
+                      <StatusBadge status={r.status} />
+                    </div>
+                    <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
+                      <div className="min-w-0"><dt className="text-caption font-semibold uppercase tracking-wide text-ink-muted">Requested by</dt><dd className="break-words font-medium text-heading">{r.registrant.displayName}{r.registrant.email && <span className="block break-all text-ink-muted">{r.registrant.email}</span>}</dd></div>
+                      <div><dt className="text-caption font-semibold uppercase tracking-wide text-ink-muted">For</dt><dd className="font-medium text-heading">{r.learner?.displayName ?? 'Family'}</dd></div>
+                      <div><dt className="text-caption font-semibold uppercase tracking-wide text-ink-muted">Payment</dt><dd className="mt-0.5"><StatusBadge status={r.paymentStatus} /></dd></div>
+                    </dl>
+                    <div className="flex flex-col gap-2 min-[460px]:flex-row">
+                      {r.status !== 'CONFIRMED' && <Button className="flex-1" disabled={update.isPending} onClick={() => decide(r, 'CONFIRMED')}>Accept</Button>}
+                      {r.status !== 'WAITLISTED' && <Button className="flex-1" variant="secondary" disabled={update.isPending} onClick={() => decide(r, 'WAITLISTED')}>Waiting list</Button>}
+                      {r.status !== 'CANCELLED' && <Button className="flex-1" variant="danger" disabled={update.isPending} onClick={() => decide(r, 'CANCELLED')}>Refuse</Button>}
+                    </div>
+                  </div>
+                );
+              }}
               columns={[
-                { key: 'for', header: 'For', cell: (r) => <span className="font-semibold text-heading">{r.event?.title ?? r.program?.title}</span> },
-                { key: 'who', header: 'Requested by', cell: (r) => <span>{r.registrant.displayName}<span className="block text-caption text-ink-muted">{r.registrant.email}</span></span> },
-                { key: 'learner', header: 'Learner', cell: (r) => r.learner?.displayName ?? 'Family', mobile: false },
-                { key: 'price', header: 'Price', cell: (r) => { const i = r.event ?? r.program; return i?.priceCents ? formatMoney(i.priceCents, i.currency ?? 'XAF') : 'Free'; }, mobile: false },
+                { key: 'for', header: 'For', className: 'min-w-[10rem]', cell: (r) => { const i = r.event ?? r.program; return <span><span className="font-semibold text-heading">{r.event?.title ?? r.program?.title}</span><span className="block text-caption text-ink-muted">{r.event ? 'Event' : 'Program'} · {i?.priceCents ? formatMoney(i.priceCents, i.currency ?? 'XAF') : 'Free'}</span></span>; } },
+                { key: 'who', header: 'Requested by', className: 'min-w-[11rem]', cell: (r) => <span className="break-words">{r.registrant.displayName}{r.learner && <span className="text-ink-muted"> for {r.learner.displayName}</span>}<span className="block break-all text-caption text-ink-muted">{r.registrant.email}</span></span> },
                 { key: 'pay', header: 'Payment', cell: (r) => <StatusBadge status={r.paymentStatus} /> },
-                { key: 'date', header: 'Received', cell: (r) => formatDateTime(r.createdAt), mobile: false },
+                { key: 'date', header: 'Received', className: 'whitespace-nowrap', cell: (r) => formatDateTime(r.createdAt), mobile: false },
                 { key: 'status', header: 'Status', cell: (r) => <StatusBadge status={r.status} /> },
                 {
                   key: 'act', header: 'Decision', cell: (r) => (

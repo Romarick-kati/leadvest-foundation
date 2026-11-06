@@ -2,7 +2,8 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { formatDate, formatDateTime, roleLabel } from '../../lib/format';
-import { Alert, Panel, StatusBadge, TableSkeleton } from '../../components/ui';
+import { Alert, ButtonLink, Panel, StatusBadge, TableSkeleton } from '../../components/ui';
+import { LineChart } from '../../components/ui/icons';
 import { AdminPage, StatCard } from './shared';
 import { useT } from '../../i18n';
 
@@ -19,7 +20,7 @@ export default function Overview() {
   const q = useQuery({ queryKey: ['admin', 'overview'], queryFn: () => api.get<OverviewData>('/admin/overview') });
   const d = q.data;
   return (
-    <AdminPage title={t('admin.overview')} description={t('admin.overviewDescription')}>
+    <AdminPage title={t('admin.overview')} description={t('admin.overviewDescription')} actions={<ButtonLink to="/admin/analytics" variant="secondary" icon={<LineChart size={16} />}>{t('admin.analytics')}</ButtonLink>}>
       {!d ? <TableSkeleton rows={6} /> : (
         <div className="space-y-6">
           {(d.sampleContent > 0 || !d.integrations.emailDelivery || d.integrations.payments === 'mock') && (
